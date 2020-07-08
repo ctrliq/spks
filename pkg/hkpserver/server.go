@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/ctrl-cmd/pks/pkg/database"
@@ -12,8 +13,11 @@ import (
 )
 
 var (
-	ErrNotPermitted = errors.New("Not permitted")
-	ErrDuplicateKey = errors.New("Duplicated key")
+	ErrNotPermitted     = errors.New("Not permitted")
+	ErrBadRequest       = errors.New("Bad request")
+	ErrMethodNotAllowed = errors.New("Method not allowed")
+	ErrNotImplemented   = errors.New("Not implemented")
+	ErrDuplicateKey     = errors.New("Duplicated key")
 )
 
 const (
@@ -28,21 +32,23 @@ const (
 type VerifyKey func(*openpgp.Entity) (bool, error)
 
 type Config struct {
-	Addr       string
-	PublicPem  string
-	PrivatePem string
-	DB         database.Database
-	VerifyKey  VerifyKey
+	Addr          string
+	PublicPem     string
+	PrivatePem    string
+	DB            database.DatabaseEngine
+	VerifyKey     VerifyKey
+	CustomHandler func(http.Handler) http.Handler
 }
 
-type defaultHandler struct {
-	db        database.Database
+type hkpHandler struct {
+	db        database.DatabaseEngine
 	verifyKey VerifyKey
 }
 
-func (h *defaultHandler) add(w http.ResponseWriter, r *http.Request) {
+// add provides the /pks/add HKP handler.
+func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -51,7 +57,7 @@ func (h *defaultHandler) add(w http.ResponseWriter, r *http.Request) {
 	for _, opt := range strings.Split(query.Get("options"), ",") {
 		switch strings.TrimSpace(opt) {
 		case "nm":
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
+			http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
 			return
 		}
 	}
@@ -78,8 +84,16 @@ func (h *defaultHandler) add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	e := el[0]
-	fp := fmt.Sprintf("0x%X", e.PrimaryKey.Fingerprint[:])
-	eldb, err := h.db.Get(database.SearchPattern(fp), "", true)
+	// prevents private keys from being stored, this also
+	// helps database engine to distinguish key added
+	// internally (server signing key) or from this handler
+	if e.PrivateKey != nil {
+		http.Error(w, "Keys submitted must not contain private key", http.StatusBadRequest)
+		return
+	}
+
+	fp := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[:])
+	eldb, err := h.db.Get(fp, true, true, database.PublicKey)
 
 	// check duplicate
 	if err != nil {
@@ -89,16 +103,9 @@ func (h *defaultHandler) add(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "BUGGED!!!!", http.StatusInternalServerError)
 		return
 	} else if len(eldb) == 1 {
-		// check if this is a revocation signature
-		for _, rsig := range e.Revocations {
-			if err := eldb[0].PrimaryKey.VerifyRevocationSignature(rsig); err != nil {
-				http.Error(w, "Not permitted", http.StatusForbidden)
-				return
-			}
-		}
 		// report conflict if this is not a revocation submission
 		if len(e.Revocations) == 0 {
-			http.Error(w, "Duplicated key", http.StatusConflict)
+			http.Error(w, ErrDuplicateKey.Error(), http.StatusConflict)
 			return
 		}
 		// revoked key, updating database
@@ -139,28 +146,49 @@ func (h *defaultHandler) add(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *defaultHandler) lookup(w http.ResponseWriter, r *http.Request) {
+// lookup provides the /pks/lookup HKP handler.
+func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 
 	query := r.URL.Query()
 
-	options := ""
 	for _, opt := range strings.Split(query.Get("options"), ",") {
 		switch strings.TrimSpace(opt) {
 		case "nm":
-			options = "nm"
+			http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
+			return
 		}
 	}
 
-	search := query.Get("search")
 	exact := query.Get("exact") == "on"
+
+	search, err := url.QueryUnescape(query.Get("search"))
+	if err != nil {
+		http.Error(w, "A key must be provided", http.StatusBadRequest)
+		return
+	}
+
+	isFingerprint := strings.HasPrefix(search, "0x")
+	if isFingerprint {
+		search = strings.TrimPrefix(search, "0x")
+		search = strings.ToUpper(search)
+		length := len(search)
+		if length < 8 {
+			http.Error(w, ErrBadRequest.Error(), http.StatusBadRequest)
+			return
+		} else if length < 16 {
+			search = search[length-8:]
+		} else if length < 40 {
+			search = search[length-16:]
+		}
+	}
 
 	switch query.Get("op") {
 	case "get":
-		el, err := h.db.Get(database.SearchPattern(search), options, exact)
+		el, err := h.db.Get(search, isFingerprint, exact, database.PublicKey)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -173,8 +201,9 @@ func (h *defaultHandler) lookup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	case "index", "vindex":
-		el, err := h.db.Get(database.SearchPattern(search), options, exact)
+		el, err := h.db.Get(search, isFingerprint, exact, database.PublicKey)
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		} else if len(el) == 0 {
@@ -186,10 +215,11 @@ func (h *defaultHandler) lookup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	default:
-		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+		http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
 	}
 }
 
+// Start starts HKP server with the corresponding server configuration.
 func Start(ctx context.Context, cfg Config) error {
 	shutdownCh := make(chan error, 1)
 
@@ -198,7 +228,7 @@ func Start(ctx context.Context, cfg Config) error {
 	}
 
 	mux := http.NewServeMux()
-	handler := &defaultHandler{cfg.DB, cfg.VerifyKey}
+	handler := &hkpHandler{cfg.DB, cfg.VerifyKey}
 
 	mux.HandleFunc(AddRoute, handler.add)
 	mux.HandleFunc(LookupRoute, handler.lookup)
@@ -209,12 +239,10 @@ func Start(ctx context.Context, cfg Config) error {
 	}
 
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: logRequestHandler(mux),
+		Addr: addr,
 	}
-
-	if err := cfg.DB.Connect(); err != nil {
-		return fmt.Errorf("while connecting to database: %s", err)
+	if cfg.CustomHandler != nil {
+		srv.Handler = cfg.CustomHandler(mux)
 	}
 
 	go func() {
@@ -236,9 +264,5 @@ func Start(ctx context.Context, cfg Config) error {
 		return err
 	}
 
-	err = <-shutdownCh
-
-	cfg.DB.Disconnect()
-
-	return err
+	return <-shutdownCh
 }

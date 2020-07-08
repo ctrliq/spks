@@ -6,27 +6,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/crypto/openpgp/packet"
-
 	"github.com/ctrl-cmd/pks/pkg/database"
-	"github.com/sirupsen/logrus"
 	"github.com/tidwall/buntdb"
+	"github.com/tidwall/gjson"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/packet"
 )
 
 const (
-	keyPrefix = "keys:"
+	keySep       = ":"
+	keyPrefix    = "key" + keySep
+	sigKeyPrefix = "sigkey" + keySep
 )
 
 type entityRecord struct {
-	Name        string `json:"name"`
-	Email       string `json:"email"`
-	Fingerprint string `json:"fingerprint"`
-	Key         []byte `json:"key"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Key   []byte `json:"key"`
 }
 
 type Config struct {
@@ -46,9 +45,10 @@ func (b *bunt) Connect() error {
 	var err error
 
 	createIndexes := map[string]bool{
-		"fingerprint": true,
-		"name":        true,
-		"email":       true,
+		keyPrefix + "name":     true,
+		keyPrefix + "email":    true,
+		sigKeyPrefix + "name":  true,
+		sigKeyPrefix + "email": true,
 	}
 
 	if b.cfg.Dir == "" {
@@ -72,7 +72,10 @@ func (b *bunt) Connect() error {
 	}
 
 	for index := range createIndexes {
-		if err := b.db.CreateIndex(index, keyPrefix+"*", buntdb.IndexJSON(index)); err != nil {
+		splitted := strings.Split(index, keySep)
+		prefix := splitted[0]
+		field := splitted[1]
+		if err := b.db.CreateIndex(index, prefix+keySep+"*", buntdb.IndexJSON(field)); err != nil {
 			return fmt.Errorf("could not create index %s: %s", index, err)
 		}
 	}
@@ -86,31 +89,54 @@ func (b *bunt) Disconnect() error {
 
 func (b *bunt) Add(e *openpgp.Entity) error {
 	return b.db.Update(func(tx *buntdb.Tx) error {
-		val, err := marshalEntityRecord(e)
+		fp := e.PrimaryKey.KeyIdString()
+		val, err := marshalEntityRecord(e, false)
 		if err != nil {
 			return err
 		}
-		fmt.Println(val)
-		_, _, err = tx.Set(keyPrefix+e.PrimaryKey.KeyIdString(), val, nil)
+		_, _, err = tx.Set(keyPrefix+fp, val, nil)
+		if err != nil {
+			return err
+		}
+		// key entity with a private part is a signing key
+		if e.PrivateKey != nil {
+			val, err := marshalEntityRecord(e, true)
+			if err != nil {
+				return err
+			}
+			_, _, err = tx.Set(sigKeyPrefix+fp, val, nil)
+			if err != nil {
+				return err
+			}
+		}
 		return err
 	})
 }
 
-func (b *bunt) Get(s database.SearchPattern, options string, exact bool) (openpgp.EntityList, error) {
+func (b *bunt) Del(e *openpgp.Entity) error {
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		fpKey := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[12:20])
+		if _, err := tx.Delete(sigKeyPrefix + fpKey); err != buntdb.ErrNotFound {
+			return err
+		}
+		if _, err := tx.Delete(keyPrefix + fpKey); err != buntdb.ErrNotFound {
+			return err
+		}
+		return nil
+	})
+}
+
+func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.KeyType) (openpgp.EntityList, error) {
 	var err error
 	var el openpgp.EntityList
 
-	search, err := url.PathUnescape(string(s))
-	if err != nil {
-		return nil, err
+	kp := keyPrefix
+	if kt == database.SigningKey {
+		kp = sigKeyPrefix
 	}
 
-	logrus.WithField("search", search).Info("Search key")
-
-	if s.IsFingerprint() {
+	if isFingerprint {
 		// fingerprint search
-		search = strings.ToUpper(strings.TrimPrefix(search, "0x"))
-
 		fp, err := hex.DecodeString(search)
 		if err != nil {
 			return nil, err
@@ -119,8 +145,7 @@ func (b *bunt) Get(s database.SearchPattern, options string, exact bool) (openpg
 		fpKey := ""
 
 		switch len(fp) {
-		case 4:
-		case 8:
+		case 4, 8:
 			fpKey = fmt.Sprintf("%X", fp)
 		case 20:
 			fpKey = fmt.Sprintf("%X", fp[12:20])
@@ -130,7 +155,7 @@ func (b *bunt) Get(s database.SearchPattern, options string, exact bool) (openpg
 
 		err = b.db.View(func(tx *buntdb.Tx) error {
 			if exact {
-				val, err := tx.Get(keyPrefix + fpKey)
+				val, err := tx.Get(kp + fpKey)
 				if err != nil {
 					if err == buntdb.ErrNotFound {
 						return nil
@@ -145,10 +170,7 @@ func (b *bunt) Get(s database.SearchPattern, options string, exact bool) (openpg
 				return nil
 			}
 
-			if fpKey == "" {
-				fpKey = fmt.Sprintf("%X", fp)
-			}
-			keyPattern := fmt.Sprintf("%s*%s", keyPrefix, fpKey)
+			keyPattern := fmt.Sprintf("%s*%s", kp, fpKey)
 
 			return tx.AscendKeys(keyPattern, func(key, val string) bool {
 				e, err := unmarshalEntityRecord(val)
@@ -161,12 +183,57 @@ func (b *bunt) Get(s database.SearchPattern, options string, exact bool) (openpg
 		})
 	} else {
 		// text search
+		err = b.db.View(func(tx *buntdb.Tx) error {
+			if exact {
+				// first search for email
+				err := tx.AscendEqual(kp+"email", search, func(key, val string) bool {
+					e, err := unmarshalEntityRecord(val)
+					if err != nil {
+						return false
+					}
+					el = append(el, e)
+					return false
+				})
+				if err != nil {
+					return err
+				}
+				if len(el) == 1 {
+					return nil
+				}
+				// search for name
+				return tx.AscendEqual(kp+"name", search, func(key, val string) bool {
+					e, err := unmarshalEntityRecord(val)
+					if err != nil {
+						return false
+					}
+					el = append(el, e)
+					return false
+				})
+			}
+			return tx.Ascend(kp+"email", func(key, val string) bool {
+				r := gjson.GetMany(val, "name", "email")
+				if len(r) != 2 {
+					return true
+				}
+				name := r[0].String()
+				email := r[1].String()
+
+				if strings.Contains(name, search) || strings.Contains(email, search) {
+					e, err := unmarshalEntityRecord(val)
+					if err != nil {
+						return true
+					}
+					el = append(el, e)
+				}
+				return true
+			})
+		})
 	}
 
 	return el, err
 }
 
-func marshalEntityRecord(e *openpgp.Entity) (string, error) {
+func marshalEntityRecord(e *openpgp.Entity, private bool) (string, error) {
 	var identity *openpgp.Identity
 
 	for _, id := range e.Identities {
@@ -181,15 +248,23 @@ func marshalEntityRecord(e *openpgp.Entity) (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-	if err := e.Serialize(buf); err != nil {
-		return "", err
+
+	// if the entity has a private key, we know this key is the signing
+	// key set and used by the server.
+	if private {
+		if err := e.SerializePrivate(buf, nil); err != nil {
+			return "", err
+		}
+	} else {
+		if err := e.Serialize(buf); err != nil {
+			return "", err
+		}
 	}
 
 	er := entityRecord{
-		Name:        identity.UserId.Name,
-		Email:       identity.UserId.Email,
-		Fingerprint: fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[:]),
-		Key:         buf.Bytes(),
+		Name:  identity.UserId.Name,
+		Email: identity.UserId.Email,
+		Key:   buf.Bytes(),
 	}
 
 	b, err := json.Marshal(&er)
@@ -219,5 +294,5 @@ func unmarshalEntityRecord(val string) (*openpgp.Entity, error) {
 
 func init() {
 	db := new(bunt)
-	database.RegisterDatabase("", db)
+	database.RegisterDatabaseEngine("", db)
 }

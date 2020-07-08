@@ -55,7 +55,11 @@ func (pe *printEntity) print(w io.Writer) error {
 		flags += "r"
 	}
 
-	_, err = fmt.Fprintf(w, "pub:%X:%d:%d:%d:%s:%s\n", key.Fingerprint[:], key.PubKeyAlgo, bitLength, ct, expiration, flags)
+	_, err = fmt.Fprintf(
+		w,
+		"pub:%X:%d:%d:%d:%s:%s\n",
+		key.Fingerprint[:], key.PubKeyAlgo, bitLength, ct, expiration, flags,
+	)
 	if err != nil {
 		return err
 	}
@@ -83,7 +87,11 @@ func (pe *printEntity) print(w io.Writer) error {
 			flags += "r"
 		}
 
-		_, err := fmt.Fprintf(w, "uid:%s:%d:%s:%s\n", url.PathEscape(id.Name), ct, expiration, flags)
+		_, err := fmt.Fprintf(
+			w,
+			"uid:%s:%d:%s:%s\n",
+			url.QueryEscape(id.Name), ct, expiration, flags,
+		)
 		if err != nil {
 			return err
 		}
@@ -92,6 +100,9 @@ func (pe *printEntity) print(w io.Writer) error {
 	return nil
 }
 
+// WriteIndex writes on w a readable index based on the entity list
+// provided. The index format follows the one described in the HKP draft
+// https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00#section-5.2
 func WriteIndex(w io.Writer, el openpgp.EntityList) error {
 	_, err := fmt.Fprintf(w, "info:1:%d\n", len(el))
 	if err != nil {

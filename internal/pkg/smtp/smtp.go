@@ -8,8 +8,10 @@ import (
 )
 
 var DefaultSMTPConfig Config = Config{
-	Host: "localhost",
-	Port: 25,
+	Host:           "localhost",
+	Port:           25,
+	Email:          "admin@ctrl-cmd.com",
+	AllowedDomains: []string{"ctrl-cmd.com"},
 }
 
 type Config struct {

@@ -9,6 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// logResponseWriter wraps an http.ResponseWriter to intercept
+// the http code status returned by an HTTP handler.
 type logResponseWriter struct {
 	http.ResponseWriter
 	code int
@@ -42,7 +44,8 @@ func remoteIP(req *http.Request) string {
 	return realIP
 }
 
-func logRequestHandler(h http.Handler) http.Handler {
+// LogRequestHandler provides an HTTP handler to log HTTP requests.
+func LogRequestHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 

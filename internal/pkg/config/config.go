@@ -25,11 +25,13 @@ type ServerConfig struct {
 	BindAddr string `yaml:"bind-address"`
 	AdvURL   string `yaml:"advertise-url"`
 
+	SigningPGPKey string `yaml:"signing-pgpkey"`
+
 	Certificate Certificate `yaml:"certificate"`
 
 	SMTP smtp.Config `yaml:"smtp"`
 
-	DB       string          `yaml:"db"`
+	DBEngine string          `yaml:"db"`
 	DBConfig database.Config `yaml:"db-config"`
 }
 
@@ -41,25 +43,25 @@ var DefaultServerConfig ServerConfig = ServerConfig{
 
 func (c *ServerConfig) UnmarshalYAML(value *yaml.Node) error {
 	var dbConfigNode *yaml.Node
-	dbName := ""
+	dbEngine := ""
 
 	for i, n := range value.Content {
 		if n.Value == "db-config" {
 			dbConfigNode = value.Content[i+1]
 		} else if n.Value == "db" {
-			dbName = value.Content[i+1].Value
+			dbEngine = value.Content[i+1].Value
 		}
 	}
 
-	if dbConfigNode != nil && dbName != "" {
-		db, ok := database.GetDatabase(dbName)
+	if dbConfigNode != nil && dbEngine != "" {
+		db, ok := database.GetDatabaseEngine(dbEngine)
 		if !ok {
-			return fmt.Errorf("unknown database")
+			return fmt.Errorf("unknown database engine '%s'", dbEngine)
 		}
 		c.DBConfig = db.NewConfig()
 		if c.DBConfig != nil {
 			if err := dbConfigNode.Decode(c.DBConfig); err != nil {
-				return err
+				return fmt.Errorf("while parsing database configuration: %s", err)
 			}
 		}
 	}
