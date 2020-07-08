@@ -100,19 +100,7 @@ func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if len(eldb) > 1 {
-		http.Error(w, "BUGGED!!!!", http.StatusInternalServerError)
-		return
-	} else if len(eldb) == 1 {
-		// report conflict if this is not a revocation submission
-		if len(e.Revocations) == 0 {
-			http.Error(w, ErrDuplicateKey.Error(), http.StatusConflict)
-			return
-		}
-		// revoked key, updating database
-		if err := h.db.Add(e); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		http.Error(w, "Multiple keys found for fingerprint "+fp, http.StatusInternalServerError)
 		return
 	}
 
@@ -127,6 +115,8 @@ func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 				status = http.StatusForbidden
 			case ErrDuplicateKey:
 				status = http.StatusConflict
+			case ErrBadRequest:
+				status = http.StatusBadRequest
 			}
 			http.Error(w, errMsg, status)
 			return
