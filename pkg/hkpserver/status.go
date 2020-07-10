@@ -21,7 +21,7 @@ type status struct {
 func NewStatus(code int, isError bool, message ...string) Status {
 	msg := http.StatusText(code)
 	if len(message) > 0 {
-		msg = strings.Join(message, ":")
+		msg = strings.Join(message, ": ")
 	}
 	return &status{msg, code, isError}
 }
