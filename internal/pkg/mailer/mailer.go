@@ -39,15 +39,16 @@ var DefaultSubject = "Public key validation"
 
 var DefaultTemplate = `Hello {{.Name}},
 
-You've just submitted a public key on {{.PublicURL}}, it requires you to validate
+You've just submitted a public key on {{.PublicURL}}, this requires you to validate
 that the key was pushed by you, so in order to finalize the validation process you
-need to enter one of the following command:
+need to enter one of the following command from the same machine you originally pushed
+the key:
 
-- if you pushed with Singularity please enter the following command in your terminal:
+- if you pushed it with Singularity please enter the following command in your terminal:
 
 singularity key push -u {{.PublicAuthURL}} {{.Fingerprint}}
 
-- if you pushed with gpg tool, please enter the following command in your terminal:
+- if you pushed it with gpg tool, please enter the following command in your terminal:
 
 curl --data-urlencode "keytext=$(gpg --armor --export {{.Fingerprint}})" {{.PublicAuthURL}}/pks/add
 
