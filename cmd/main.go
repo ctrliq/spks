@@ -73,7 +73,20 @@ func execute(args []string) error {
 
 	var signingKey *openpgp.Entity
 
-	if cfg.SigningPGPKey != "" {
+	// check if there is a signing key in the database
+	eldb, err := db.Get("", true, false, database.SigningKey)
+	if err != nil {
+		return fmt.Errorf("while searching for signing key in database: %s", err)
+	} else {
+		for _, e := range eldb {
+			if len(eldb[0].Revocations) == 0 {
+				signingKey = e
+				break
+			}
+		}
+	}
+
+	if cfg.SigningPGPKey != "" && signingKey == nil {
 		if _, err := os.Stat(cfg.SigningPGPKey); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("while getting signing pgp key: %s", err)
 		} else if err == nil {
