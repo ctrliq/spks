@@ -5,7 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ctrl-cmd/pks/internal/pkg/smtp"
+	"github.com/ctrl-cmd/pks/internal/pkg/defaultdb"
+	"github.com/ctrl-cmd/pks/internal/pkg/mailer"
 	"github.com/ctrl-cmd/pks/pkg/database"
 	"github.com/ctrl-cmd/pks/pkg/hkpserver"
 	"gopkg.in/yaml.v3"
@@ -22,51 +23,24 @@ type Certificate struct {
 }
 
 type ServerConfig struct {
-	BindAddr string `yaml:"bind-address"`
-	AdvURL   string `yaml:"advertise-url"`
+	BindAddr  string `yaml:"bind-address"`
+	PublicURL string `yaml:"public-url"`
 
 	SigningPGPKey string `yaml:"signing-pgpkey"`
 
 	Certificate Certificate `yaml:"certificate"`
 
-	SMTP smtp.Config `yaml:"smtp"`
+	MailerConfig mailer.Config `yaml:"mail"`
 
-	DBEngine string          `yaml:"db"`
-	DBConfig database.Config `yaml:"db-config"`
+	DBEngine string                 `yaml:"db"`
+	DBConfig map[string]interface{} `yaml:"db-config"`
 }
 
 var DefaultServerConfig ServerConfig = ServerConfig{
-	BindAddr: hkpserver.DefaultAddr,
-	AdvURL:   "http://" + hkpserver.DefaultAddr,
-	SMTP:     smtp.DefaultSMTPConfig,
-}
-
-func (c *ServerConfig) UnmarshalYAML(value *yaml.Node) error {
-	var dbConfigNode *yaml.Node
-	dbEngine := ""
-
-	for i, n := range value.Content {
-		if n.Value == "db-config" {
-			dbConfigNode = value.Content[i+1]
-		} else if n.Value == "db" {
-			dbEngine = value.Content[i+1].Value
-		}
-	}
-
-	if dbConfigNode != nil && dbEngine != "" {
-		db, ok := database.GetDatabaseEngine(dbEngine)
-		if !ok {
-			return fmt.Errorf("unknown database engine '%s'", dbEngine)
-		}
-		c.DBConfig = db.NewConfig()
-		if c.DBConfig != nil {
-			if err := dbConfigNode.Decode(c.DBConfig); err != nil {
-				return fmt.Errorf("while parsing database configuration: %s", err)
-			}
-		}
-	}
-
-	return nil
+	BindAddr:     hkpserver.DefaultAddr,
+	PublicURL:    "http://" + hkpserver.DefaultAddr,
+	MailerConfig: mailer.DefaultConfig,
+	DBEngine:     defaultdb.Name,
 }
 
 func Parse(path string) (ServerConfig, error) {
@@ -81,5 +55,34 @@ func Parse(path string) (ServerConfig, error) {
 	if err := yaml.Unmarshal(b, &srvConfig); err != nil {
 		return ServerConfig{}, err
 	}
+
+	if srvConfig.DBEngine == "" {
+		srvConfig.DBEngine = defaultdb.Name
+	}
+
+	// parse the database configuration
+	db, ok := database.GetDatabaseEngine(srvConfig.DBEngine)
+	if !ok {
+		return ServerConfig{}, fmt.Errorf("unknown database engine '%s'", srvConfig.DBEngine)
+	}
+
+	b, err = yaml.Marshal(srvConfig.DBConfig)
+	if err != nil {
+		return ServerConfig{}, err
+	}
+	if err := yaml.Unmarshal(b, db.NewConfig()); err != nil {
+		return ServerConfig{}, err
+	}
+
 	return srvConfig, nil
+}
+
+func CheckServerConfig(cfg ServerConfig) error {
+	if cfg.PublicURL == "" {
+		return fmt.Errorf("configuration public-url is missing or empty")
+	}
+	if err := mailer.CheckConfig(&cfg.MailerConfig); err != nil {
+		return err
+	}
+	return nil
 }

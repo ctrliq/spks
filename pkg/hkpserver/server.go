@@ -2,22 +2,14 @@ package hkpserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/ctrl-cmd/pks/pkg/database"
+	"github.com/ctrl-cmd/pks/pkg/keyring"
 	"golang.org/x/crypto/openpgp"
-)
-
-var (
-	ErrNotPermitted     = errors.New("Not permitted")
-	ErrBadRequest       = errors.New("Bad request")
-	ErrMethodNotAllowed = errors.New("Method not allowed")
-	ErrNotImplemented   = errors.New("Not implemented")
-	ErrDuplicateKey     = errors.New("Duplicated key")
 )
 
 const (
@@ -29,117 +21,101 @@ const (
 	LookupRoute = "/pks/lookup"
 )
 
-type VerifyKey func(*openpgp.Entity) (bool, error)
-
 type Config struct {
-	Addr          string
-	PublicPem     string
-	PrivatePem    string
-	DB            database.DatabaseEngine
-	VerifyKey     VerifyKey
-	CustomHandler func(http.Handler) http.Handler
+	Addr           string
+	PublicPem      string
+	PrivatePem     string
+	DB             database.DatabaseEngine
+	Verifier       Verifier
+	CustomHandler  func(http.Handler) http.Handler
+	MaxHeaderBytes int
+	MaxBodyBytes   int64
 }
 
 type hkpHandler struct {
-	db        database.DatabaseEngine
-	verifyKey VerifyKey
+	maxBodyBytes int64
+	db           database.DatabaseEngine
+	verifier     Verifier
 }
 
 // add provides the /pks/add HKP handler.
 func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
+		NewForbiddenStatus().Write(w)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
 
 	query := r.URL.Query()
 
 	for _, opt := range strings.Split(query.Get("options"), ",") {
 		switch strings.TrimSpace(opt) {
 		case "nm":
-			http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
+			NewNotImplementedStatus().Write(w)
 			return
 		}
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		NewInternalServerErrorStatus(err.Error()).Write(w)
 		return
 	}
 
 	s := strings.NewReader(r.PostForm.Get("keytext"))
 	el, err := openpgp.ReadArmoredKeyRing(s)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// for simplicity only one key submission is supported
-	if len(el) > 1 {
-		http.Error(w, "Only one key submission is supported", http.StatusBadRequest)
+		NewInternalServerErrorStatus(err.Error()).Write(w)
 		return
 	} else if len(el) == 0 {
-		http.Error(w, "A key must be provided", http.StatusBadRequest)
+		NewBadRequestStatus("No key submitted").Write(w)
 		return
 	}
 
-	e := el[0]
 	// prevents private keys from being stored, this also
 	// helps database engine to distinguish key added
 	// internally (server signing key) or from this handler
-	if e.PrivateKey != nil {
-		http.Error(w, "Keys submitted must not contain private key", http.StatusBadRequest)
-		return
-	}
-
-	fp := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[:])
-	eldb, err := h.db.Get(fp, true, true, database.PublicKey)
-
-	// check duplicate
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else if len(eldb) > 1 {
-		http.Error(w, "Multiple keys found for fingerprint "+fp, http.StatusInternalServerError)
-		return
-	}
-
-	// first see, go through validation process if any
-	if h.verifyKey != nil {
-		verified, err := h.verifyKey(e)
-		if err != nil {
-			errMsg := err.Error()
-			status := http.StatusInternalServerError
-			switch err {
-			case ErrNotPermitted:
-				status = http.StatusForbidden
-			case ErrDuplicateKey:
-				status = http.StatusConflict
-			case ErrBadRequest:
-				status = http.StatusBadRequest
-			}
-			http.Error(w, errMsg, status)
-			return
-		} else if !verified {
-			// if there is no error reported and the
-			// key wasn't flagged as verified we return
-			// an accepted status meaning the key has been
-			// processed for further verification (eg: mail)
-			w.WriteHeader(http.StatusAccepted)
+	for _, e := range el {
+		if e.PrivateKey != nil {
+			NewBadRequestStatus("Keys submitted must not contain private key").Write(w)
 			return
 		}
 	}
 
-	if err := h.db.Add(e); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var keys openpgp.EntityList
+	var status Status
+
+	// go through validation process if any
+	if h.verifier != nil {
+		keys, status = h.verifier.Verify(el, r)
+		if status == nil {
+			NewInternalServerErrorStatus("Broken verifier").Write(w)
+			return
+		}
+		if len(keys) == 0 || status.IsError() {
+			status.Write(w)
+			return
+		}
+	} else {
+		keys = el
+	}
+
+	if status == nil {
+		status = NewOKStatus("Key(s) submitted successfully")
+	}
+
+	if err := h.db.Add(keys); err != nil {
+		NewInternalServerErrorStatus(err.Error()).Write(w)
 		return
 	}
+
+	status.Write(w)
 }
 
 // lookup provides the /pks/lookup HKP handler.
 func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, ErrMethodNotAllowed.Error(), http.StatusMethodNotAllowed)
+		NewMethodNotAllowedStatus().Write(w)
 		return
 	}
 
@@ -148,7 +124,7 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 	for _, opt := range strings.Split(query.Get("options"), ",") {
 		switch strings.TrimSpace(opt) {
 		case "nm":
-			http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
+			NewNotImplementedStatus().Write(w)
 			return
 		}
 	}
@@ -157,7 +133,7 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 
 	search, err := url.QueryUnescape(query.Get("search"))
 	if err != nil {
-		http.Error(w, "A key must be provided", http.StatusBadRequest)
+		NewBadRequestStatus("A key must be provided").Write(w)
 		return
 	}
 
@@ -167,7 +143,7 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 		search = strings.ToUpper(search)
 		length := len(search)
 		if length < 8 {
-			http.Error(w, ErrBadRequest.Error(), http.StatusBadRequest)
+			NewBadRequestStatus("Fingerprint search must have at least 8 characters").Write(w)
 			return
 		} else if length < 16 {
 			search = search[length-8:]
@@ -180,32 +156,34 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 	case "get":
 		el, err := h.db.Get(search, isFingerprint, exact, database.PublicKey)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			NewInternalServerErrorStatus(err.Error()).Write(w)
 			return
 		} else if len(el) == 0 {
-			http.NotFound(w, r)
+			NewNotFoundStatus().Write(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/pgp-keys")
-		if err := WriteArmoredKeyRing(w, el); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err := keyring.WriteArmoredKeyRing(w, el); err != nil {
+			NewInternalServerErrorStatus(err.Error()).Write(w)
+			return
 		}
 	case "index", "vindex":
 		el, err := h.db.Get(search, isFingerprint, exact, database.PublicKey)
 		if err != nil {
-			fmt.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			NewInternalServerErrorStatus(err.Error()).Write(w)
 			return
 		} else if len(el) == 0 {
-			http.NotFound(w, r)
+			NewNotFoundStatus().Write(w)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		if err := WriteIndex(w, el); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			NewInternalServerErrorStatus(err.Error()).Write(w)
+			return
 		}
 	default:
-		http.Error(w, ErrNotImplemented.Error(), http.StatusNotImplemented)
+		NewNotImplementedStatus().Write(w)
+		return
 	}
 }
 
@@ -217,19 +195,44 @@ func Start(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("no database specified")
 	}
 
+	maxBodyBytes := int64(1 << 18) // limit body size to 64K by default
+	if cfg.MaxBodyBytes != 0 {
+		maxBodyBytes = cfg.MaxBodyBytes
+	}
+
 	mux := http.NewServeMux()
-	handler := &hkpHandler{cfg.DB, cfg.VerifyKey}
+	handler := &hkpHandler{
+		maxBodyBytes: maxBodyBytes,
+		db:           cfg.DB,
+		verifier:     cfg.Verifier,
+	}
 
 	mux.HandleFunc(AddRoute, handler.add)
 	mux.HandleFunc(LookupRoute, handler.lookup)
+
+	if cfg.Verifier != nil {
+		// Init can panic if the verifier registers one of the
+		// http route above, as this is considered as a developer
+		// mistake and break the Verify interface, just warn here
+		// and let developer fixing it
+		if err := cfg.Verifier.Init(cfg.DB, mux); err != nil {
+			return fmt.Errorf("while initializing verifier: %s", err)
+		}
+	}
 
 	addr := cfg.Addr
 	if addr == "" {
 		addr = DefaultAddr
 	}
 
+	maxHeaderBytes := 1 << 12 // limit header size to 4K by default
+	if cfg.MaxHeaderBytes != 0 {
+		maxHeaderBytes = cfg.MaxHeaderBytes
+	}
+
 	srv := &http.Server{
-		Addr: addr,
+		Addr:           addr,
+		MaxHeaderBytes: maxHeaderBytes,
 	}
 	if cfg.CustomHandler != nil {
 		srv.Handler = cfg.CustomHandler(mux)

@@ -11,16 +11,13 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"golang.org/x/crypto/openpgp/packet"
-
-	// load the default database engine
-	_ "github.com/ctrl-cmd/pks/internal/pkg/defaultdb"
-
 	"github.com/ctrl-cmd/pks/internal/pkg/config"
+	"github.com/ctrl-cmd/pks/internal/pkg/mailverifier"
 	"github.com/ctrl-cmd/pks/pkg/database"
 	"github.com/ctrl-cmd/pks/pkg/hkpserver"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/packet"
 )
 
 func addSigningKey(el openpgp.EntityList, db database.DatabaseEngine) error {
@@ -35,25 +32,27 @@ func addSigningKey(el openpgp.EntityList, db database.DatabaseEngine) error {
 		return fmt.Errorf("private key is encrypted")
 	}
 
-	return db.Add(e)
+	return db.Add(el)
 }
 
-func execute() error {
-	cfg, err := config.Parse(filepath.Join(config.Dir, config.File))
+func execute(args []string) error {
+	configPath := filepath.Join(config.Dir, config.File)
+	if len(args) > 0 {
+		configPath = args[0]
+	}
+
+	cfg, err := config.Parse(configPath)
 	if err != nil {
 		return fmt.Errorf("while parsing configuration file: %s", err)
+	}
+
+	if err := config.CheckServerConfig(cfg); err != nil {
+		return fmt.Errorf("while checking configuration: %s", err)
 	}
 
 	db, ok := database.GetDatabaseEngine(cfg.DBEngine)
 	if !ok {
 		return fmt.Errorf("no database engine %s", cfg.DBEngine)
-	}
-	scfg := hkpserver.Config{
-		Addr:          cfg.BindAddr,
-		PublicPem:     cfg.Certificate.PublicKeyPath,
-		PrivatePem:    cfg.Certificate.PrivateKeyPath,
-		DB:            db,
-		CustomHandler: hkpserver.LogRequestHandler,
 	}
 
 	c := make(chan os.Signal, 1)
@@ -72,14 +71,12 @@ func execute() error {
 	}
 	defer db.Disconnect()
 
-	generateSigningKey := true
+	var signingKey *openpgp.Entity
 
 	if cfg.SigningPGPKey != "" {
 		if _, err := os.Stat(cfg.SigningPGPKey); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("while getting signing pgp key: %s", err)
 		} else if err == nil {
-			generateSigningKey = false
-
 			logrus.WithField("path", cfg.SigningPGPKey).Info("Using signing PGP key")
 			b, err := ioutil.ReadFile(cfg.SigningPGPKey)
 			if err != nil {
@@ -92,14 +89,15 @@ func execute() error {
 			if err := addSigningKey(el, db); err != nil {
 				return err
 			}
+			signingKey = el[0]
 		}
 	}
 
-	if generateSigningKey {
+	if signingKey == nil {
 		logrus.Info("Generating signing PGP key")
 
 		conf := &packet.Config{RSABits: 4096, DefaultHash: crypto.SHA384}
-		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.SMTP.Email, conf)
+		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.MailerConfig.Email, conf)
 		if err != nil {
 			return fmt.Errorf("while generating signing pgp key: %s", err)
 		}
@@ -108,6 +106,16 @@ func execute() error {
 		if err := addSigningKey(openpgp.EntityList{e}, db); err != nil {
 			return err
 		}
+		signingKey = e
+	}
+
+	scfg := hkpserver.Config{
+		Addr:          cfg.BindAddr,
+		PublicPem:     cfg.Certificate.PublicKeyPath,
+		PrivatePem:    cfg.Certificate.PrivateKeyPath,
+		DB:            db,
+		CustomHandler: hkpserver.LogRequestHandler,
+		Verifier:      mailverifier.New(&cfg, signingKey),
 	}
 
 	logrus.WithField("listen", cfg.BindAddr).Info("Server started")
@@ -116,7 +124,7 @@ func execute() error {
 }
 
 func main() {
-	if err := execute(); err != nil {
+	if err := execute(os.Args[1:]); err != nil {
 		logrus.WithError(err).Fatal("while running server")
 	}
 }

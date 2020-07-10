@@ -43,10 +43,10 @@ type DatabaseEngine interface {
 	// Disconnect initiates disconnection from the database.
 	Disconnect() error
 
-	// Add adds the provided key into the database.
-	Add(e *openpgp.Entity) error
-	// Del removes the provided key from the database.
-	Del(e *openpgp.Entity) error
+	// Add adds the provided keys into the database.
+	Add(e openpgp.EntityList) error
+	// Del removes the provided keys from the database.
+	Del(e openpgp.EntityList) error
 	// Get retrieves keys corresponding to the search pattern.
 	Get(s string, isFingerprint bool, exact bool, kt KeyType) (openpgp.EntityList, error)
 }

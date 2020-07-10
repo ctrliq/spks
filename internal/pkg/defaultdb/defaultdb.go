@@ -17,6 +17,10 @@ import (
 )
 
 const (
+	Name = "default"
+)
+
+const (
 	keySep       = ":"
 	keyPrefix    = "key" + keySep
 	sigKeyPrefix = "sigkey" + keySep
@@ -44,11 +48,11 @@ func (b *bunt) NewConfig() database.Config {
 func (b *bunt) Connect() error {
 	var err error
 
-	createIndexes := map[string]bool{
-		keyPrefix + "name":     true,
-		keyPrefix + "email":    true,
-		sigKeyPrefix + "name":  true,
-		sigKeyPrefix + "email": true,
+	createIndexes := map[string]struct{}{
+		keyPrefix + "name":     struct{}{},
+		keyPrefix + "email":    struct{}{},
+		sigKeyPrefix + "name":  struct{}{},
+		sigKeyPrefix + "email": struct{}{},
 	}
 
 	if b.cfg.Dir == "" {
@@ -67,7 +71,7 @@ func (b *bunt) Connect() error {
 
 	for _, index := range indexes {
 		if _, ok := createIndexes[index]; ok {
-			createIndexes[index] = false
+			delete(createIndexes, index)
 		}
 	}
 
@@ -87,40 +91,44 @@ func (b *bunt) Disconnect() error {
 	return b.db.Close()
 }
 
-func (b *bunt) Add(e *openpgp.Entity) error {
+func (b *bunt) Add(el openpgp.EntityList) error {
 	return b.db.Update(func(tx *buntdb.Tx) error {
-		fp := e.PrimaryKey.KeyIdString()
-		val, err := marshalEntityRecord(e, false)
-		if err != nil {
-			return err
-		}
-		_, _, err = tx.Set(keyPrefix+fp, val, nil)
-		if err != nil {
-			return err
-		}
-		// key entity with a private part is a signing key
-		if e.PrivateKey != nil {
-			val, err := marshalEntityRecord(e, true)
+		for _, e := range el {
+			fp := e.PrimaryKey.KeyIdString()
+			val, err := marshalEntityRecord(e, false)
 			if err != nil {
 				return err
 			}
-			_, _, err = tx.Set(sigKeyPrefix+fp, val, nil)
+			_, _, err = tx.Set(keyPrefix+fp, val, nil)
 			if err != nil {
 				return err
 			}
+			// key entity with a private part is a signing key
+			if e.PrivateKey != nil {
+				val, err := marshalEntityRecord(e, true)
+				if err != nil {
+					return err
+				}
+				_, _, err = tx.Set(sigKeyPrefix+fp, val, nil)
+				if err != nil {
+					return err
+				}
+			}
 		}
-		return err
+		return nil
 	})
 }
 
-func (b *bunt) Del(e *openpgp.Entity) error {
+func (b *bunt) Del(el openpgp.EntityList) error {
 	return b.db.Update(func(tx *buntdb.Tx) error {
-		fpKey := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[12:20])
-		if _, err := tx.Delete(sigKeyPrefix + fpKey); err != buntdb.ErrNotFound {
-			return err
-		}
-		if _, err := tx.Delete(keyPrefix + fpKey); err != buntdb.ErrNotFound {
-			return err
+		for _, e := range el {
+			fpKey := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[12:20])
+			if _, err := tx.Delete(sigKeyPrefix + fpKey); err != buntdb.ErrNotFound {
+				return err
+			}
+			if _, err := tx.Delete(keyPrefix + fpKey); err != buntdb.ErrNotFound {
+				return err
+			}
 		}
 		return nil
 	})
@@ -150,7 +158,11 @@ func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.Ke
 		case 20:
 			fpKey = fmt.Sprintf("%X", fp[12:20])
 		default:
-			return nil, fmt.Errorf("fingerprint must be either 4, 8 or 20 bytes length")
+			// allow to query the signing key internally
+			// without specifying a fingerprint
+			if kt != database.SigningKey {
+				return nil, fmt.Errorf("fingerprint must be either 4, 8 or 20 bytes length")
+			}
 		}
 
 		err = b.db.View(func(tx *buntdb.Tx) error {
@@ -237,10 +249,8 @@ func marshalEntityRecord(e *openpgp.Entity, private bool) (string, error) {
 	var identity *openpgp.Identity
 
 	for _, id := range e.Identities {
-		if id.SelfSignature.IsPrimaryId != nil && *id.SelfSignature.IsPrimaryId {
-			identity = id
-			break
-		}
+		identity = id
+		break
 	}
 
 	if identity == nil {
@@ -294,5 +304,5 @@ func unmarshalEntityRecord(val string) (*openpgp.Entity, error) {
 
 func init() {
 	db := new(bunt)
-	database.RegisterDatabaseEngine("", db)
+	database.RegisterDatabaseEngine(Name, db)
 }

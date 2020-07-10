@@ -1,4 +1,4 @@
-package hkpserver
+package keyring
 
 import (
 	"io"
