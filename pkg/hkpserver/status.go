@@ -7,6 +7,7 @@ import (
 )
 
 type Status interface {
+	Is(int) bool
 	IsError() bool
 	Write(http.ResponseWriter)
 }
@@ -27,6 +28,10 @@ func NewStatus(code int, isError bool, message ...string) Status {
 
 func NewOKStatus(message ...string) Status {
 	return NewStatus(http.StatusOK, false, message...)
+}
+
+func NewAcceptedStatus(message ...string) Status {
+	return NewStatus(http.StatusAccepted, false, message...)
 }
 
 func NewBadRequestStatus(message ...string) Status {
@@ -67,4 +72,8 @@ func (s *status) Write(w http.ResponseWriter) {
 	} else {
 		fmt.Fprintf(w, "%s\n", s.message)
 	}
+}
+
+func (s *status) Is(code int) bool {
+	return s.code == code
 }

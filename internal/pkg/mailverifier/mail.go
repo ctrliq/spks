@@ -69,7 +69,7 @@ func (m *MailVerifier) Verify(el openpgp.EntityList, r *http.Request) (openpgp.E
 	fp := fmt.Sprintf("%X", e.PrimaryKey.Fingerprint[:])
 	eldb, err := m.db.Get(fp, true, true, database.PublicKey)
 	if err != nil {
-		return nil, hkpserver.NewInternalServerErrorStatus(err.Error())
+		return nil, hkpserver.NewInternalServerErrorStatus("Database access failed")
 	} else if len(eldb) > 1 {
 		return nil, hkpserver.NewInternalServerErrorStatus("Multiple keys found for fingerprint " + fp)
 	} else if len(eldb) == 1 {
@@ -80,12 +80,19 @@ func (m *MailVerifier) Verify(el openpgp.EntityList, r *http.Request) (openpgp.E
 		if status := check(e, dbEntity, r); status != nil {
 			if status.IsError() {
 				return nil, status
+			} else if status.Is(http.StatusAccepted) {
+				// accepted status here means that the key
+				// requires a validation before being added
+				logrus.WithField("fingerprint", fp).Info("Key accepted")
+				return nil, status
 			}
 			return el, status
 		}
 	}
 
-	return nil, hkpserver.NewOKStatus("Key(s) submitted")
+	logrus.Error("Mail verification failed")
+	// processing failed meaning something is broken
+	return nil, hkpserver.NewInternalServerErrorStatus("Mail verification failed")
 }
 
 func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http.Request) hkpserver.Status {
@@ -98,12 +105,12 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 	// process auth token
 	token, err := m.generateToken(e)
 	if err != nil {
-		return hkpserver.NewInternalServerErrorStatus()
+		return hkpserver.NewInternalServerErrorStatus("Token generation failed")
 	}
 
 	u, err := url.Parse(m.config.PublicURL)
 	if err != nil {
-		return hkpserver.NewInternalServerErrorStatus()
+		return hkpserver.NewInternalServerErrorStatus("Bad server configuration")
 	}
 	u.User = url.User(token)
 
@@ -127,12 +134,12 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 
 	tmpl, err := template.New("message").Parse(templateMsg)
 	if err != nil {
-		return hkpserver.NewInternalServerErrorStatus()
+		return hkpserver.NewInternalServerErrorStatus("Mail message parsing failed")
 	}
 	s := new(strings.Builder)
 	err = tmpl.Execute(s, args)
 	if err != nil {
-		return hkpserver.NewInternalServerErrorStatus()
+		return hkpserver.NewInternalServerErrorStatus("Mail message processing failed")
 	}
 
 	logrus.WithField("to", to).Info("Sending public key")
@@ -143,5 +150,5 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 		return hkpserver.NewInternalServerErrorStatus(err.Error())
 	}
 
-	return nil
+	return hkpserver.NewAcceptedStatus("Key accepted, validation instructions sent to", to)
 }

@@ -57,7 +57,7 @@ func (m *MailVerifier) checkEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *htt
 		if strings.HasSuffix(email.Address, domain) {
 			el, err := m.db.Get(email.Address, false, true, database.PublicKey)
 			if err != nil {
-				return hkpserver.NewInternalServerErrorStatus(err.Error())
+				return hkpserver.NewInternalServerErrorStatus("Database error")
 			} else if len(el) > 0 {
 				if len(el[0].Revocations) == 0 {
 					return hkpserver.NewConflictStatus("Key rejected, duplicated key identity")
@@ -80,7 +80,7 @@ func (m *MailVerifier) checkValidSubmission(e *openpgp.Entity, dbe *openpgp.Enti
 
 	origToken, err := m.generateToken(e)
 	if err != nil {
-		return hkpserver.NewInternalServerErrorStatus(err.Error())
+		return hkpserver.NewInternalServerErrorStatus("Token generation error")
 	} else if token != origToken {
 		return nil
 	}
@@ -88,7 +88,7 @@ func (m *MailVerifier) checkValidSubmission(e *openpgp.Entity, dbe *openpgp.Enti
 	for key := range e.Identities {
 		// sign identity
 		if err := e.SignIdentity(key, m.signingKey, nil); err != nil {
-			return hkpserver.NewInternalServerErrorStatus(err.Error())
+			return hkpserver.NewInternalServerErrorStatus("Signing error")
 		}
 		break
 	}
