@@ -3,7 +3,7 @@ package hkpserver
 import (
 	"fmt"
 	"io"
-	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/openpgp"
@@ -90,7 +90,7 @@ func (pe *printEntity) print(w io.Writer) error {
 		_, err := fmt.Fprintf(
 			w,
 			"uid:%s:%d:%s:%s\n",
-			url.QueryEscape(id.Name), ct, expiration, flags,
+			strings.ReplaceAll(id.Name, ":", "%3A"), ct, expiration, flags,
 		)
 		if err != nil {
 			return err
