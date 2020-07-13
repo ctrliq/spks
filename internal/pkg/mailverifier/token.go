@@ -11,9 +11,10 @@ import (
 
 func (m *MailVerifier) generateToken(e *openpgp.Entity) (string, error) {
 	// resulting hash of the serialized and encrypted public key
+	// being submitted
 	token := md5.New()
 
-	// for reproducible hash
+	// ensure reproducible hash
 	config := &packet.Config{
 		Rand: bytes.NewReader(m.sessionKey[:]),
 	}

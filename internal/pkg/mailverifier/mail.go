@@ -34,12 +34,12 @@ func New(config *config.ServerConfig, signingKey *openpgp.Entity) *MailVerifier 
 		signingKey: signingKey,
 	}
 	v.processing = []processingFunc{
-		v.checkSingleIdentity,
-		v.checkRevocation,
-		v.checkDuplicateKey,
-		v.checkValidSubmission,
-		v.checkEmail,
-		v.sendEmail,
+		v.checkSingleIdentity,  // ensure keys have only one identity
+		v.checkRevocation,      // accept key revocation without validation
+		v.checkDuplicateKey,    // fail if a key exist with the same fingerprint
+		v.checkValidSubmission, // validation process via basic auth token
+		v.checkEmail,           // check if mail address in key identity is whitelisted
+		v.sendEmail,            // send validation email
 	}
 	return v
 }
