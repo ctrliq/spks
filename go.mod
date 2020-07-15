@@ -3,6 +3,8 @@ module github.com/ctrl-cmd/pks
 go 1.14
 
 require (
+	github.com/ctrl-cmd/gobuild v0.0.0-20200715161619-936b27836ca5
+	github.com/magefile/mage v1.10.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/tidwall/buntdb v1.1.2
 	github.com/tidwall/gjson v1.3.4

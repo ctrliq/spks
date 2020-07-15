@@ -20,6 +20,9 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
+// set by mage at build time
+var version string
+
 func addSigningKey(el openpgp.EntityList, db database.DatabaseEngine) error {
 	if len(el) != 1 {
 		return fmt.Errorf("found %d signing pgp key(s), only one can be set", len(el))

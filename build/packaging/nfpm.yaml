@@ -1,0 +1,13 @@
+name: "pks"
+release: 1
+
+maintainer: "Control Command, Inc."
+vendor: "Control Command, Inc."
+homepage: "https://ctrl-cmd.com"
+license: "Copyright (c) 2020, Control Command, Inc. All rights reserved."
+
+description: |
+  A Singularity Public Key Server.
+bindir: "/usr/local/bin"
+files:
+  ./pks: "/usr/local/bin/pks"
