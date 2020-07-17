@@ -19,6 +19,10 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: git config --global url."https://cclerget:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Build
         run: go run ./mage.go build
       - name: Unit Test
@@ -36,5 +40,9 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: git config --global url."https://cclerget:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Test
         run: go run ./mage.go test:integration
