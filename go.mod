@@ -1,4 +1,4 @@
-module github.com/ctrl-cmd/pks
+module github.com/ctrl-cmd/spks
 
 go 1.14
 

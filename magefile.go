@@ -4,5 +4,5 @@ package main
 
 import (
 	// mage:import
-	_ "github.com/ctrl-cmd/pks/build/mage/targets"
+	_ "github.com/ctrl-cmd/spks/build/mage/targets"
 )

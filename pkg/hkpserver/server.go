@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ctrl-cmd/pks/pkg/database"
-	"github.com/ctrl-cmd/pks/pkg/keyring"
+	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrl-cmd/spks/pkg/keyring"
 	"golang.org/x/crypto/openpgp"
 )
 

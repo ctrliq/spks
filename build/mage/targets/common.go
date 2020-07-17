@@ -8,7 +8,7 @@ import (
 	"github.com/ctrl-cmd/gobuild"
 )
 
-const packageName = "pks"
+const packageName = "spks"
 
 func getPackageFile(name, ext string) string {
 	if ext != "" {

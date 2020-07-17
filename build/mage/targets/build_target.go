@@ -14,10 +14,10 @@ func ldFlags() string {
 
 // Install installs pks server using `go install`.
 func Install() error {
-	return gobuild.RunInstall("-ldflags", ldFlags(), "./cmd/pks/")
+	return gobuild.RunInstall("-ldflags", ldFlags(), "./cmd/spks/")
 }
 
 // Build builds pks binary using `go build`.
 func Build() error {
-	return gobuild.RunBuild("-ldflags", ldFlags(), "./cmd/pks/")
+	return gobuild.RunBuild("-ldflags", ldFlags(), "./cmd/spks/")
 }

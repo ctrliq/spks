@@ -5,8 +5,8 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/ctrl-cmd/pks/pkg/database"
-	"github.com/ctrl-cmd/pks/pkg/hkpserver"
+	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrl-cmd/spks/pkg/hkpserver"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )

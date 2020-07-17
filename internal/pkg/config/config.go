@@ -5,15 +5,15 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ctrl-cmd/pks/internal/pkg/defaultdb"
-	"github.com/ctrl-cmd/pks/internal/pkg/mailer"
-	"github.com/ctrl-cmd/pks/pkg/database"
-	"github.com/ctrl-cmd/pks/pkg/hkpserver"
+	"github.com/ctrl-cmd/spks/internal/pkg/defaultdb"
+	"github.com/ctrl-cmd/spks/internal/pkg/mailer"
+	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrl-cmd/spks/pkg/hkpserver"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	Dir  = "/etc/pks"
+	Dir  = "/etc/spks"
 	File = "server.yaml"
 )
 

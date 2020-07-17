@@ -9,10 +9,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ctrl-cmd/pks/internal/pkg/config"
-	"github.com/ctrl-cmd/pks/internal/pkg/mailer"
-	"github.com/ctrl-cmd/pks/pkg/database"
-	"github.com/ctrl-cmd/pks/pkg/hkpserver"
+	"github.com/ctrl-cmd/spks/internal/pkg/config"
+	"github.com/ctrl-cmd/spks/internal/pkg/mailer"
+	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrl-cmd/spks/pkg/hkpserver"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )
