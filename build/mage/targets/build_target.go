@@ -1,6 +1,7 @@
 package targets
 
 import (
+	"os"
 	"strings"
 
 	"github.com/ctrl-cmd/gobuild"
@@ -8,7 +9,10 @@ import (
 
 // ldFlags returns linker flags passed to Go command.
 func ldFlags() string {
-	flags := []string{"-X main.version=" + getVersion()}
+	flags := []string{
+		"-X main.version=" + getVersion(),
+		"-w -extldflags \"-static\"",
+	}
 	return strings.Join(flags, " ")
 }
 
@@ -20,4 +24,9 @@ func Install() error {
 // Build builds pks binary using `go build`.
 func Build() error {
 	return gobuild.RunBuild("-ldflags", ldFlags(), "./cmd/spks/")
+}
+
+func init() {
+	// for static build
+	os.Setenv("CGO_ENABLED", "0")
 }

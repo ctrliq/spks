@@ -9,5 +9,16 @@ license: "Copyright (c) 2020, Control Command, Inc. All rights reserved."
 description: |
   Singularity Public Key Server.
 bindir: "/usr/local/bin"
+
 files:
   ./spks: "/usr/local/bin/spks"
+
+config_files:
+  ./etc/server-example.yaml: /usr/local/etc/spks/server.yaml
+  ./build/packaging/systemd/spks.service: "/lib/systemd/system/spks.service"
+
+empty_folders:
+- /var/lib/spks
+
+scripts:
+  postinstall: ./build/packaging/scripts/postinstall.sh

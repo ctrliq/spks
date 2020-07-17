@@ -1,0 +1,38 @@
+# Bind address/port where server listen on
+bind-address: ":11371"
+
+# Public URL as exposed to external clients (also used in mail template)
+public-url: "http://localhost"
+
+# Path to the signing key used by the server to sign public key identities,
+# the file must contain both public and private key (without password) in
+# armored ASCII format
+signing-key: ""
+
+# HTTP TLS configuration
+certificate:
+    # Path to the server public key for HTTPS support
+    public-key: ""
+    # Path to private key for HTTPS support
+    private-key: ""
+
+# SMTP mail client configuration
+mail:
+    # Hostname/ip of the SMTP server
+    host: "localhost"
+    # Port of the SMTP server
+    port: 25
+    # Sender mail address (use a real one when possible)
+    email: "root@localhost"
+    # Username account to use to send mail from this server
+    user: ""
+    # Password credentials to use to send mail
+    password: ""
+    # Filter public key identities based on mail address domain
+    allowed-domains: ["localhost"]
+
+# Database used by the server to store public keys
+db: "default"
+db-config:
+    # database storage directory, used in-memory database if empty
+    dir: "/var/lib/spks"

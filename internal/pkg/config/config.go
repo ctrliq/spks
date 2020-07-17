@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	Dir  = "/etc/spks"
+	Dir  = "/usr/local/etc/spks"
 	File = "server.yaml"
 )
 
