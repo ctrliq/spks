@@ -41,7 +41,7 @@ type hkpHandler struct {
 // add provides the /pks/add HKP handler.
 func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		NewForbiddenStatus().Write(w)
+		NewMethodNotAllowedStatus().Write(w)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 
 	search, err := url.QueryUnescape(query.Get("search"))
 	if err != nil {
-		NewBadRequestStatus("A key must be provided").Write(w)
+		NewBadRequestStatus("Bad search parameter").Write(w)
 		return
 	}
 
