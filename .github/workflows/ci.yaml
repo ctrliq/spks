@@ -1,0 +1,40 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+        go: ['1.14.x']
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build
+        run: go run ./mage.go build
+      - name: Unit Test
+        run: go run ./mage.go test:unit
+
+  integration-test:
+    strategy:
+      matrix:
+        go: ['1.14.x']
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Test
+        run: go run ./mage.go test:integration
