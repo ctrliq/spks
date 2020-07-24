@@ -15,7 +15,7 @@ Singularity PKS allows to store and retrieve user public PGP keys. Unlike tradit
 ## Installation ##
 
 ```
-git clone https://github.com/ctrl-cmd/spks && cd spks
+git clone https://github.com/ctrl-cmd/spks && cd spks/build
 go run mage.go build
 ./spks
 ```

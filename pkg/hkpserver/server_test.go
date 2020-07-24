@@ -60,7 +60,7 @@ func getArmored(t *testing.T, e *openpgp.Entity, private bool) string {
 
 	if e != nil {
 		if private {
-			if err := e.SerializePrivate(aw, nil); err != nil {
+			if err := e.SerializePrivateWithoutSigning(aw, nil); err != nil {
 				t.Fatalf("while serializing private key: %s", err)
 			}
 		} else {

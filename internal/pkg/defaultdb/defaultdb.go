@@ -262,7 +262,7 @@ func marshalEntityRecord(e *openpgp.Entity, private bool) (string, error) {
 	// if the entity has a private key, we know this key is the signing
 	// key set and used by the server.
 	if private {
-		if err := e.SerializePrivate(buf, nil); err != nil {
+		if err := e.SerializePrivateWithoutSigning(buf, nil); err != nil {
 			return "", err
 		}
 	} else {

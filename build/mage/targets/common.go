@@ -18,7 +18,7 @@ func getPackageFile(name, ext string) string {
 }
 
 func getReleaseDir() string {
-	dir := filepath.Join("release", getVersion())
+	dir := filepath.Join("build", "release", getVersion())
 	if err := os.MkdirAll(dir, 0750); err != nil {
 		return ""
 	}

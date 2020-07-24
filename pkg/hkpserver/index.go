@@ -48,7 +48,7 @@ func (pe *printEntity) print(w io.Writer) error {
 	}
 
 	flags := ""
-	if pe.selfSig.KeyExpired(time.Now()) {
+	if pe.selfSig.SigExpired(time.Now()) {
 		flags += "e"
 	}
 	if len(pe.entity.Revocations) > 0 {
@@ -80,7 +80,7 @@ func (pe *printEntity) print(w io.Writer) error {
 		}
 
 		flags := ""
-		if id.SelfSignature.KeyExpired(time.Now()) {
+		if id.SelfSignature.SigExpired(time.Now()) {
 			flags += "e"
 		}
 		if id.SelfSignature.RevocationReason != nil {

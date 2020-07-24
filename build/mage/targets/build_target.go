@@ -11,22 +11,25 @@ import (
 func ldFlags() string {
 	flags := []string{
 		"-X main.version=" + getVersion(),
-		"-w -extldflags \"-static\"",
+		"-s -w",
 	}
 	return strings.Join(flags, " ")
 }
 
 // Install installs pks server using `go install`.
 func Install() error {
+	// for static build
+	os.Setenv("CGO_ENABLED", "0")
 	return gobuild.RunInstall("-ldflags", ldFlags(), "./cmd/spks/")
 }
 
 // Build builds pks binary using `go build`.
 func Build() error {
-	return gobuild.RunBuild("-ldflags", ldFlags(), "./cmd/spks/")
+	// for static build
+	os.Setenv("CGO_ENABLED", "0")
+	return gobuild.RunBuild("-o", "./build/spks", "-ldflags", ldFlags(), "./cmd/spks/")
 }
 
 func init() {
-	// for static build
-	os.Setenv("CGO_ENABLED", "0")
+
 }

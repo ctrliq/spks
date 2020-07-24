@@ -11,7 +11,7 @@ description: |
 bindir: "/usr/local/bin"
 
 files:
-  ./spks: "/usr/local/bin/spks"
+  ./build/spks: "/usr/local/bin/spks"
 
 config_files:
   ./etc/server-example.yaml: /usr/local/etc/spks/server.yaml
