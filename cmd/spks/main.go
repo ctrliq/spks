@@ -49,7 +49,7 @@ func execute(args []string) error {
 		return fmt.Errorf("while parsing configuration file: %s", err)
 	}
 
-	if err := config.CheckServerConfig(cfg); err != nil {
+	if err := config.CheckServerConfig(&cfg); err != nil {
 		return fmt.Errorf("while checking configuration: %s", err)
 	}
 

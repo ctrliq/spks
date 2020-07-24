@@ -3,6 +3,9 @@ package mailer
 import (
 	"crypto/tls"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/gomail.v2"
 )
@@ -15,6 +18,16 @@ var DefaultConfig Config = Config{
 	Subject:         DefaultSubject,
 	MessageTemplate: DefaultTemplate,
 }
+
+const (
+	mailHostEnv        = "SPKS_MAIL_HOSTNAME"
+	mailPortEnv        = "SPKS_MAIL_PORT"
+	mailAddress        = "SPKS_MAIL_ADDRESS"
+	mailUsername       = "SPKS_MAIL_USERNAME"
+	mailPassword       = "SPKS_MAIL_PASSWORD"
+	mailInsecure       = "SPKS_MAIL_INSECURE_TLS"
+	mailAllowedDomains = "SPKS_MAIL_ALLOWED_DOMAINS"
+)
 
 type Config struct {
 	Host            string   `yaml:"host"`
@@ -59,6 +72,46 @@ Please ignore this message if you didn't submit this key or report any abuse by 
 `
 
 func CheckConfig(cfg *Config) error {
+	env := os.Getenv(mailHostEnv)
+	if env != "" {
+		cfg.Host = env
+	}
+	env = os.Getenv(mailPortEnv)
+	if env != "" {
+		b, err := strconv.ParseUint(env, 10, 16)
+		if err != nil {
+			return fmt.Errorf("while parsing %s: %s", mailPortEnv, err)
+		}
+		cfg.Port = int(b)
+	}
+	env = os.Getenv(mailAddress)
+	if env != "" {
+		cfg.Email = env
+	}
+	env = os.Getenv(mailUsername)
+	if env != "" {
+		cfg.User = env
+	}
+	env = os.Getenv(mailPassword)
+	if env != "" {
+		cfg.Password = env
+	}
+	env = os.Getenv(mailInsecure)
+	if env != "" {
+		b, err := strconv.ParseBool(env)
+		if err != nil {
+			return fmt.Errorf("while parsing %s: %s", mailInsecure, err)
+		}
+		cfg.InsecureTLS = b
+	}
+	env = os.Getenv(mailAllowedDomains)
+	if env != "" {
+		cfg.AllowedDomains = strings.Split(env, ",")
+		for i, d := range cfg.AllowedDomains {
+			cfg.AllowedDomains[i] = strings.TrimSpace(d)
+		}
+	}
+
 	if cfg.Host == "" {
 		return fmt.Errorf("host address withing mail configuration is missing or empty")
 	}

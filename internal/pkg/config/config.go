@@ -17,6 +17,14 @@ const (
 	File = "server.yaml"
 )
 
+const (
+	bindAddrEnv   = "SPKS_BIND_ADDRESS"
+	publicURLEnv  = "SPKS_PUBLIC_URL"
+	signingKeyEnv = "SPKS_SIGNING_PGPKEY"
+	publicKeyEnv  = "SPKS_PUBLIC_KEY_CERT"
+	privateKeyEnv = "SPKS_PRIVATE_KEY_CERT"
+)
+
 type Certificate struct {
 	PublicKeyPath  string `yaml:"public-key"`
 	PrivateKeyPath string `yaml:"private-key"`
@@ -77,12 +85,39 @@ func Parse(path string) (ServerConfig, error) {
 	return srvConfig, nil
 }
 
-func CheckServerConfig(cfg ServerConfig) error {
+func CheckServerConfig(cfg *ServerConfig) error {
+	// get environment to take precedence over configuration file
+	env := os.Getenv(bindAddrEnv)
+	if env != "" {
+		cfg.BindAddr = env
+	}
+	env = os.Getenv(publicURLEnv)
+	if env != "" {
+		cfg.PublicURL = env
+	}
+	env = os.Getenv(signingKeyEnv)
+	if env != "" {
+		cfg.SigningPGPKey = env
+	}
+	env = os.Getenv(publicKeyEnv)
+	if env != "" {
+		cfg.Certificate.PublicKeyPath = env
+	}
+	env = os.Getenv(privateKeyEnv)
+	if env != "" {
+		cfg.Certificate.PrivateKeyPath = env
+	}
+
 	if cfg.PublicURL == "" {
 		return fmt.Errorf("configuration public-url is missing or empty")
 	}
 	if err := mailer.CheckConfig(&cfg.MailerConfig); err != nil {
 		return err
 	}
+	db, _ := database.GetDatabaseEngine(cfg.DBEngine)
+	if err := db.CheckConfig(); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -21,9 +22,10 @@ const (
 )
 
 const (
-	keySep       = ":"
-	keyPrefix    = "key" + keySep
-	sigKeyPrefix = "sigkey" + keySep
+	databaseDirEnv = "SPKS_DB_DIR"
+	keySep         = ":"
+	keyPrefix      = "key" + keySep
+	sigKeyPrefix   = "sigkey" + keySep
 )
 
 type entityRecord struct {
@@ -43,6 +45,20 @@ type bunt struct {
 
 func (b *bunt) NewConfig() database.Config {
 	return &b.cfg
+}
+
+func (b *bunt) CheckConfig() error {
+	dirEnv := os.Getenv(databaseDirEnv)
+	if dirEnv != "" {
+		b.cfg.Dir = dirEnv
+	}
+	if b.cfg.Dir == "" {
+		return nil
+	}
+	if _, err := os.Stat(b.cfg.Dir); err != nil {
+		return fmt.Errorf("could not use database directory %s: %s", b.cfg.Dir, err)
+	}
+	return nil
 }
 
 func (b *bunt) Connect() error {

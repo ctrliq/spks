@@ -37,6 +37,9 @@ func GetDatabaseEngine(name string) (DatabaseEngine, bool) {
 type DatabaseEngine interface {
 	// NewConfig returns a config instance for the corresponding DB engine.
 	NewConfig() Config
+	// CheckConfig ensure proper configuration parameters and also handle
+	// configuration set by environment variables.
+	CheckConfig() error
 
 	// Connect initiates connection to the database.
 	Connect() error
