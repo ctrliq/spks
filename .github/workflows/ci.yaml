@@ -24,25 +24,8 @@ jobs:
           TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: git config --global url."https://cclerget:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Build
+        working-directory: ./build
         run: go run ./mage.go build
-      - name: Unit Test
-        run: go run ./mage.go test:unit
-
-  integration-test:
-    strategy:
-      matrix:
-        go: ['1.14.x']
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go }}
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Configure git for private modules
-        env:
-          TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        run: git config --global url."https://cclerget:${TOKEN}@github.com".insteadOf "https://github.com"
-      - name: Test
+      - name: Tests
+        working-directory: ./build
         run: go run ./mage.go test:integration
