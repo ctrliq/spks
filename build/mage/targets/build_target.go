@@ -20,6 +20,9 @@ func ldFlags() string {
 func Install() error {
 	// for static build
 	os.Setenv("CGO_ENABLED", "0")
+	if os.Getenv("BUILD_GOARCH") != "" {
+		os.Setenv("GOARCH", os.Getenv("BUILD_GOARCH"))
+	}
 	return gobuild.RunInstall("-ldflags", ldFlags(), "./cmd/spks/")
 }
 
@@ -27,6 +30,9 @@ func Install() error {
 func Build() error {
 	// for static build
 	os.Setenv("CGO_ENABLED", "0")
+	if os.Getenv("BUILD_GOARCH") != "" {
+		os.Setenv("GOARCH", os.Getenv("BUILD_GOARCH"))
+	}
 	return gobuild.RunBuild("-o", "./build/spks", "-ldflags", ldFlags(), "./cmd/spks/")
 }
 

@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build-and-test:
@@ -29,3 +31,39 @@ jobs:
       - name: Tests
         working-directory: ./build
         run: go run ./mage.go test:integration
+
+  build-docker-release-images:
+    # build docker images for tag push only
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+        cfg:
+          - { arch: amd64,   goarch: amd64 }
+          - { arch: i386,    goarch: 386 }
+          - { arch: ppc64le, goarch: ppc64le }
+          - { arch: arm64v8, goarch: arm64 }
+          - { arch: arm32v7, goarch: arm }
+          - { arch: s390x,   goarch: s390x }
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Gobuild
+        uses: actions/checkout@v2
+        with:
+          repository: ctrl-cmd/gobuild
+          token: ${{ secrets.ACCESS_TOKEN }}
+          path: ./build/gobuild
+
+      - name: Build Docker image [${{ matrix.cfg.arch }}]
+        uses: docker/build-push-action@v1
+        with:
+          dockerfile: ./build/docker/Dockerfile
+          repository: ctrl-cmd/spks
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          build_args: ALPINE_ARCH=${{ matrix.cfg.arch }},BUILD_GOARCH=${{ matrix.cfg.goarch }}
+          tag_with_ref: true
+          push: false
