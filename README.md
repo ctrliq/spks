@@ -22,6 +22,16 @@ go run mage.go build
 ./spks
 ```
 
+## Configuration ##
+
+By default server is searching for a configuration file in `/usr/local/etc/spks/server.yaml`, if not found the server will start with a default configuration which should be pretty limited for your environment.
+
+To see available configuration directives, you can refer to the [configuration](https://github.com/ctrl-cmd/spks/wiki/Configuration) documentation section.
+
+## Documentation ##
+
+You could find the documentation at https://github.com/ctrl-cmd/spks/wiki/Singularity-Public-Key-Server.
+
 ## Create and install from package ##
 
 * Deb package:
@@ -37,9 +47,3 @@ go run mage.go build
   go run mage.go package:deb
   sudo rpm -ivh release/$(git describe|sed 's/^v//')/*.rpm
   ```
-
-## Configuration ##
-
-By default server is searching for a configuration file in `/usr/local/etc/spks/server.yaml`, if not found the server will start with a default configuration which should be pretty limited for your environment.
-
-To see available configuration directives, you can refer to this [configuration file example](etc/server-example.yaml)
