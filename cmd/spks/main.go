@@ -113,7 +113,7 @@ func execute(args []string) error {
 		logrus.Info("Generating signing PGP key")
 
 		conf := &packet.Config{RSABits: 4096, DefaultHash: crypto.SHA384}
-		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.MailerConfig.Email, conf)
+		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.MailerConfig.Sender, conf)
 		if err != nil {
 			return fmt.Errorf("while generating signing pgp key: %s", err)
 		}

@@ -114,7 +114,7 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 	}
 	u.User = url.User(token)
 
-	from := m.config.MailerConfig.Email
+	from := m.config.MailerConfig.Sender
 	to := id.UserId.Email
 	args := &mailer.TemplateArgs{
 		Name:          id.UserId.Name,

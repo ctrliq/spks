@@ -22,7 +22,7 @@ const (
 )
 
 const (
-	databaseDirEnv = "SPKS_DB_DIR"
+	databaseDirEnv = "SPKS_DBCONFIG_DIR"
 	keySep         = ":"
 	keyPrefix      = "key" + keySep
 	sigKeyPrefix   = "sigkey" + keySep

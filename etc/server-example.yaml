@@ -19,15 +19,15 @@ certificate:
 # SMTP mail client configuration
 mail:
     # Hostname/ip of the SMTP server
-    host: "localhost"
+    smtp-server: "localhost"
     # Port of the SMTP server
-    port: 25
+    smtp-port: 25
     # Sender mail address (use a real one when possible)
-    email: "root@localhost"
+    sender: "root@localhost"
     # Username account to use to send mail from this server
-    user: ""
+    smtp-username: ""
     # Password credentials to use to send mail
-    password: ""
+    smtp-password: ""
     # Filter public key identities based on mail address domain
     allowed-domains: ["localhost"]
 

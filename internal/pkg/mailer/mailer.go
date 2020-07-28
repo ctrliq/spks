@@ -11,34 +11,34 @@ import (
 )
 
 var DefaultConfig Config = Config{
-	Host:            "localhost",
-	Port:            25,
-	Email:           "admin@ctrl-cmd.com",
+	SMTPServer:      "localhost",
+	SMTPPort:        25,
+	Sender:          "admin@ctrl-cmd.com",
 	AllowedDomains:  []string{"ctrl-cmd.com"},
 	Subject:         DefaultSubject,
 	MessageTemplate: DefaultTemplate,
 }
 
 const (
-	mailHostEnv        = "SPKS_MAIL_HOSTNAME"
-	mailPortEnv        = "SPKS_MAIL_PORT"
-	mailAddress        = "SPKS_MAIL_ADDRESS"
-	mailUsername       = "SPKS_MAIL_USERNAME"
-	mailPassword       = "SPKS_MAIL_PASSWORD"
-	mailInsecure       = "SPKS_MAIL_INSECURE_TLS"
-	mailAllowedDomains = "SPKS_MAIL_ALLOWED_DOMAINS"
+	mailSMTPServerEnv     = "SPKS_MAIL_SMTP_SERVER"
+	mailSMTPPortEnv       = "SPKS_MAIL_SMTP_PORT"
+	mailSenderEnv         = "SPKS_MAIL_SENDER"
+	mailSMTPUsernameEnv   = "SPKS_MAIL_SMTP_USERNAME"
+	mailSMTPPasswordEnv   = "SPKS_MAIL_SMTP_PASSWORD"
+	mailSMTPInsecureEnv   = "SPKS_MAIL_SMTP_INSECURE_TLS"
+	mailAllowedDomainsEnv = "SPKS_MAIL_ALLOWED_DOMAINS"
 )
 
 type Config struct {
-	Host            string   `yaml:"host"`
-	Port            int      `yaml:"port"`
-	Email           string   `yaml:"email"`
-	User            string   `yaml:"user"`
-	Password        string   `yaml:"password"`
-	InsecureTLS     bool     `yaml:"insecure-tls"`
-	AllowedDomains  []string `yaml:"allowed-domains"`
+	SMTPServer      string   `yaml:"smtp-server"`
+	SMTPPort        int      `yaml:"smtp-port"`
+	SMTPInsecureTLS bool     `yaml:"smtp-insecure-tls"`
+	SMTPUsername    string   `yaml:"smtp-username"`
+	SMTPPassword    string   `yaml:"smtp-password"`
+	Sender          string   `yaml:"sender"`
 	Subject         string   `yaml:"subject"`
 	MessageTemplate string   `yaml:"message"`
+	AllowedDomains  []string `yaml:"allowed-domains"`
 }
 
 type TemplateArgs struct {
@@ -72,39 +72,39 @@ Please ignore this message if you didn't submit this key or report any abuse by 
 `
 
 func CheckConfig(cfg *Config) error {
-	env := os.Getenv(mailHostEnv)
+	env := os.Getenv(mailSMTPServerEnv)
 	if env != "" {
-		cfg.Host = env
+		cfg.SMTPServer = env
 	}
-	env = os.Getenv(mailPortEnv)
+	env = os.Getenv(mailSMTPPortEnv)
 	if env != "" {
 		b, err := strconv.ParseUint(env, 10, 16)
 		if err != nil {
-			return fmt.Errorf("while parsing %s: %s", mailPortEnv, err)
+			return fmt.Errorf("while parsing %s: %s", mailSMTPPortEnv, err)
 		}
-		cfg.Port = int(b)
+		cfg.SMTPPort = int(b)
 	}
-	env = os.Getenv(mailAddress)
+	env = os.Getenv(mailSenderEnv)
 	if env != "" {
-		cfg.Email = env
+		cfg.Sender = env
 	}
-	env = os.Getenv(mailUsername)
+	env = os.Getenv(mailSMTPUsernameEnv)
 	if env != "" {
-		cfg.User = env
+		cfg.SMTPUsername = env
 	}
-	env = os.Getenv(mailPassword)
+	env = os.Getenv(mailSMTPPasswordEnv)
 	if env != "" {
-		cfg.Password = env
+		cfg.SMTPPassword = env
 	}
-	env = os.Getenv(mailInsecure)
+	env = os.Getenv(mailSMTPInsecureEnv)
 	if env != "" {
 		b, err := strconv.ParseBool(env)
 		if err != nil {
-			return fmt.Errorf("while parsing %s: %s", mailInsecure, err)
+			return fmt.Errorf("while parsing %s: %s", mailSMTPInsecureEnv, err)
 		}
-		cfg.InsecureTLS = b
+		cfg.SMTPInsecureTLS = b
 	}
-	env = os.Getenv(mailAllowedDomains)
+	env = os.Getenv(mailAllowedDomainsEnv)
 	if env != "" {
 		cfg.AllowedDomains = strings.Split(env, ",")
 		for i, d := range cfg.AllowedDomains {
@@ -112,18 +112,18 @@ func CheckConfig(cfg *Config) error {
 		}
 	}
 
-	if cfg.Host == "" {
-		return fmt.Errorf("host address withing mail configuration is missing or empty")
+	if cfg.SMTPServer == "" {
+		return fmt.Errorf("smtp server address within mail configuration is missing or empty")
 	}
-	if cfg.Email == "" {
-		return fmt.Errorf("email address within mail configuration is missing or empty")
+	if cfg.Sender == "" {
+		return fmt.Errorf("sender address within mail configuration is missing or empty")
 	}
 	return nil
 }
 
 func Send(cfg *Config, m ...*gomail.Message) error {
-	port := cfg.Port
-	host := cfg.Host
+	port := cfg.SMTPPort
+	host := cfg.SMTPServer
 
 	if port == 0 {
 		port = 587
@@ -132,8 +132,8 @@ func Send(cfg *Config, m ...*gomail.Message) error {
 		return fmt.Errorf("a SMTP host server must be specified")
 	}
 
-	d := gomail.NewDialer(host, port, cfg.User, cfg.Password)
-	if (port == 587 || port == 465) && cfg.InsecureTLS {
+	d := gomail.NewDialer(host, port, cfg.SMTPUsername, cfg.SMTPPassword)
+	if (port == 587 || port == 465) && cfg.SMTPInsecureTLS {
 		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
