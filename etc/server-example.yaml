@@ -4,10 +4,10 @@ bind-address: ":11371"
 # Public URL as exposed to external clients (also used in mail template)
 public-url: "http://localhost"
 
-# Path to the signing key used by the server to sign public key identities,
+# Path to the signing PGP key used by the server to sign public key identities,
 # the file must contain both public and private key (without password) in
 # armored ASCII format
-signing-key: ""
+signing-pgpkey: ""
 
 # HTTP TLS configuration
 certificate:

@@ -11,4 +11,5 @@ RUN BUILD_GOARCH=${BUILD_GOARCH} go run mage.go build
 
 FROM ${ALPINE_ARCH}/alpine:3.12
 COPY --from=0 ./spks/build/spks /usr/bin/
-CMD ["/usr/bin/spks"]
+COPY --from=0 ./spks/etc/server-example.yaml /usr/local/etc/spks/server.yaml
+CMD ["/usr/local/bin/spks", "/usr/local/etc/spks/server.yaml"]
