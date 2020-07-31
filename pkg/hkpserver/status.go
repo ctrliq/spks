@@ -1,10 +1,22 @@
 package hkpserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 )
+
+// ErrorResponse describes a JSON error response.
+type ErrorResponse struct {
+	Error *Error `json:"error"`
+}
+
+// Error describes an error with code and message.
+type Error struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+}
 
 type Status interface {
 	Is(int) bool
@@ -67,8 +79,15 @@ func (s *status) IsError() bool {
 }
 
 func (s *status) Write(w http.ResponseWriter) {
-	if s.isError {
-		http.Error(w, s.message, s.code)
+	if s.isError || s.code == http.StatusAccepted {
+		w.WriteHeader(s.code)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(&ErrorResponse{
+			&Error{
+				Code:    s.code,
+				Message: s.message,
+			},
+		})
 	} else {
 		fmt.Fprintf(w, "%s\n", s.message)
 	}

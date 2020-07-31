@@ -3,6 +3,7 @@ package hkpserver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -152,7 +153,7 @@ func TestHandler(t *testing.T) {
 			method:  "GET",
 			path:    "/pks/lookup?search=%25GG",
 			code:    http.StatusBadRequest,
-			content: "Bad search parameter\n",
+			content: "Bad search parameter",
 			handler: handler.lookup,
 		},
 		{
@@ -160,7 +161,7 @@ func TestHandler(t *testing.T) {
 			method:  "GET",
 			path:    "/pks/lookup?search=0x0000&op=get",
 			code:    http.StatusBadRequest,
-			content: "Fingerprint search must have at least 8 characters\n",
+			content: "Fingerprint search must have at least 8 characters",
 			handler: handler.lookup,
 		},
 		{
@@ -337,8 +338,20 @@ func TestHandler(t *testing.T) {
 
 		if resp.Code != tt.code {
 			t.Errorf("unexpected http status returned for %q: got %d instead of %d", tt.name, resp.Code, tt.code)
-		} else if tt.content != "" && tt.content != resp.Body.String() {
-			t.Errorf("unexpected content returned for %q: got %s instead of %s", tt.name, resp.Body.String(), tt.content)
+		} else if tt.content != "" {
+			ct := resp.Header().Get("Content-Type")
+			if ct == "application/json" {
+				var er ErrorResponse
+				if err := json.Unmarshal(resp.Body.Bytes(), &er); err != nil {
+					t.Errorf("unexpected error while unmarshalling json error response: %s", err)
+				} else if er.Error.Message != tt.content {
+					t.Errorf("unexpected content returned for %q: got %s instead of %s", tt.name, er.Error.Message, tt.content)
+				}
+				continue
+			}
+			if tt.content != resp.Body.String() {
+				t.Errorf("unexpected content returned for %q: got %s instead of %s", tt.name, resp.Body.String(), tt.content)
+			}
 		}
 	}
 }
