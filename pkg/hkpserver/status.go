@@ -74,6 +74,10 @@ func NewNotFoundStatus(message ...string) Status {
 	return NewStatus(http.StatusNotFound, true, message...)
 }
 
+func NewTooManyRequestStatus(message ...string) Status {
+	return NewStatus(http.StatusTooManyRequests, true, message...)
+}
+
 func (s *status) IsError() bool {
 	return s.isError
 }

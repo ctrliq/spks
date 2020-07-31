@@ -15,6 +15,7 @@ type logResponseWriter struct {
 	http.ResponseWriter
 	code int
 	size int
+	ip   string
 }
 
 // WriteHeader records the HTTP status code as it is written.
@@ -32,16 +33,37 @@ func (lw *logResponseWriter) Write(b []byte) (int, error) {
 
 // remoteIP attempts to find the remote IP associated with a HTTP request.
 func remoteIP(req *http.Request) string {
-	realIP := req.Header.Get("X-Real-Ip")
-	forwardedFor := req.Header.Get("X-Forwarded-For")
-	if realIP == "" && forwardedFor == "" {
-		ip, _, _ := net.SplitHostPort(req.RemoteAddr)
-		return ip
+	realIP := ""
+	forwardedFor := ""
+
+	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
+	parsed := net.ParseIP(ip)
+
+	if parsed.IsLoopback() {
+		realIP = req.Header.Get("X-Real-Ip")
+		forwardedFor = req.Header.Get("X-Forwarded-For")
+	} else {
+		private := false
+		for _, pn := range privateNet {
+			if pn.Contains(parsed) {
+				private = true
+				break
+			}
+		}
+		if !private {
+			realIP = req.Header.Get("X-Real-Ip")
+			forwardedFor = req.Header.Get("X-Forwarded-For")
+		}
+	}
+
+	if realIP != "" {
+		return realIP
 	} else if forwardedFor != "" {
 		parts := strings.Split(forwardedFor, ",")
 		return strings.TrimSpace(parts[0])
 	}
-	return realIP
+
+	return ip
 }
 
 // LogRequestHandler provides an HTTP handler to log HTTP requests.
@@ -49,11 +71,11 @@ func LogRequestHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		lw := &logResponseWriter{w, http.StatusOK, 0}
+		lw := &logResponseWriter{w, http.StatusOK, 0, remoteIP(r)}
 		h.ServeHTTP(lw, r)
 
 		entry := logrus.WithFields(logrus.Fields{
-			"remote":  remoteIP(r),
+			"remote":  lw.ip,
 			"code":    lw.code,
 			"size":    lw.size,
 			"host":    r.Host,
@@ -65,4 +87,17 @@ func LogRequestHandler(h http.Handler) http.Handler {
 		})
 		entry.Info("http request")
 	})
+}
+
+var privateNet = map[string]*net.IPNet{
+	"10.0.0.0/8":     nil,
+	"172.16.0.0/12":  nil,
+	"192.168.0.0/16": nil,
+	"fc00::/7":       nil,
+}
+
+func init() {
+	for k := range privateNet {
+		_, privateNet[k], _ = net.ParseCIDR(k)
+	}
 }

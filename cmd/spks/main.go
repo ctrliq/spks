@@ -113,7 +113,7 @@ func execute(args []string) error {
 		logrus.Info("Generating signing PGP key")
 
 		conf := &packet.Config{RSABits: 4096, DefaultHash: crypto.SHA384}
-		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.MailerConfig.Sender, conf)
+		e, err := openpgp.NewEntity("Admin", "Signing Key", cfg.AdminEmail, conf)
 		if err != nil {
 			return fmt.Errorf("while generating signing pgp key: %s", err)
 		}
@@ -126,12 +126,13 @@ func execute(args []string) error {
 	}
 
 	scfg := hkpserver.Config{
-		Addr:          cfg.BindAddr,
-		PublicPem:     cfg.Certificate.PublicKeyPath,
-		PrivatePem:    cfg.Certificate.PrivateKeyPath,
-		DB:            db,
-		CustomHandler: hkpserver.LogRequestHandler,
-		Verifier:      mailverifier.New(&cfg, signingKey),
+		Addr:              cfg.BindAddr,
+		PublicPem:         cfg.Certificate.PublicKeyPath,
+		PrivatePem:        cfg.Certificate.PrivateKeyPath,
+		DB:                db,
+		CustomHandler:     hkpserver.LogRequestHandler,
+		Verifier:          mailverifier.New(&cfg, signingKey),
+		KeyPushRateLimit:  cfg.KeyPushRateLimit,
 	}
 
 	logrus.WithField("listen", cfg.BindAddr).Info("Server started")

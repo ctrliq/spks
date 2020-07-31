@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/ctrl-cmd/spks/pkg/database"
 	"github.com/ctrl-cmd/spks/pkg/keyring"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/time/rate"
 )
 
 const (
-	DefaultAddr = ":11371"
+	DefaultAddr = "localhost:11371"
 )
 
 const (
@@ -21,21 +25,78 @@ const (
 	LookupRoute = "/pks/lookup"
 )
 
+type RateLimit string
+
+func (r RateLimit) Parse() (int, int, error) {
+	limit := string(r)
+	if limit == "" {
+		return 0, 0, nil
+	}
+	s := strings.Split(limit, "/")
+	if len(s) != 2 {
+		return -1, -1, fmt.Errorf("rate limit must be of the form 1/1 not %s", limit)
+	}
+	req, err := strconv.ParseInt(s[0], 10, 32)
+	if err != nil {
+		return -1, -1, fmt.Errorf("while parsing burst limit request: %s", err)
+	}
+	min, err := strconv.ParseInt(s[1], 10, 32)
+	if err != nil {
+		return -1, -1, fmt.Errorf("while parsing burst limit second: %s", err)
+	}
+	return int(req), int(min), nil
+}
+
 type Config struct {
-	Addr           string
-	PublicPem      string
-	PrivatePem     string
-	DB             database.DatabaseEngine
-	Verifier       Verifier
-	CustomHandler  func(http.Handler) http.Handler
-	MaxHeaderBytes int
-	MaxBodyBytes   int64
+	Addr             string
+	PublicPem        string
+	PrivatePem       string
+	DB               database.DatabaseEngine
+	Verifier         Verifier
+	CustomHandler    func(http.Handler) http.Handler
+	MaxHeaderBytes   int
+	MaxBodyBytes     int64
+	KeyPushRateLimit RateLimit
+}
+
+type userLimit struct {
+	limiter *rate.Limiter
+	last    time.Time
 }
 
 type hkpHandler struct {
-	maxBodyBytes int64
-	db           database.DatabaseEngine
-	verifier     Verifier
+	maxBodyBytes    int64
+	db              database.DatabaseEngine
+	verifier        Verifier
+	usersLimit      map[string]*userLimit
+	usersLimitMutex sync.Mutex
+	rateRequests    int
+	rateMinutes     int
+}
+
+func (h *hkpHandler) pushLimitReached(ip string) bool {
+	// rate limit disabled
+	if h.usersLimit == nil {
+		return false
+	}
+
+	h.usersLimitMutex.Lock()
+	defer h.usersLimitMutex.Unlock()
+
+	if u, ok := h.usersLimit[ip]; ok {
+		u.last = time.Now()
+		if !u.limiter.Allow() {
+			return true
+		}
+	} else {
+		rt := rate.Every((time.Duration(h.rateRequests) * time.Minute) / time.Duration(h.rateRequests))
+		h.usersLimit[ip] = &userLimit{
+			limiter: rate.NewLimiter(rt, 1),
+			last:    time.Now(),
+		}
+	}
+
+	return false
 }
 
 // add provides the /pks/add HKP handler.
@@ -43,6 +104,13 @@ func (h *hkpHandler) add(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		NewMethodNotAllowedStatus().Write(w)
 		return
+	}
+
+	if l, ok := w.(*logResponseWriter); ok {
+		if h.pushLimitReached(l.ip) {
+			NewTooManyRequestStatus().Write(w)
+			return
+		}
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
@@ -189,6 +257,8 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 
 // Start starts HKP server with the corresponding server configuration.
 func Start(ctx context.Context, cfg Config) error {
+	var err error
+
 	shutdownCh := make(chan error, 1)
 
 	if cfg.DB == nil {
@@ -205,6 +275,32 @@ func Start(ctx context.Context, cfg Config) error {
 		maxBodyBytes: maxBodyBytes,
 		db:           cfg.DB,
 		verifier:     cfg.Verifier,
+	}
+
+	handler.rateRequests, handler.rateMinutes, err = cfg.KeyPushRateLimit.Parse()
+	if err != nil {
+		return err
+	} else if handler.rateRequests > 0 && handler.rateMinutes > 0 {
+		// rate limit enabled
+		handler.usersLimit = make(map[string]*userLimit)
+		ticker := time.NewTicker(1 * time.Minute)
+		lifetime := time.Duration(handler.rateMinutes) * time.Minute
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					handler.usersLimitMutex.Lock()
+					for ip, v := range handler.usersLimit {
+						if time.Since(v.last) > lifetime {
+							delete(handler.usersLimit, ip)
+						}
+					}
+					handler.usersLimitMutex.Unlock()
+				}
+			}
+		}()
 	}
 
 	mux.HandleFunc(AddRoute, handler.add)
@@ -244,8 +340,6 @@ func Start(ctx context.Context, cfg Config) error {
 			shutdownCh <- srv.Shutdown(context.Background())
 		}
 	}()
-
-	var err error
 
 	if cfg.PublicPem != "" && cfg.PrivatePem != "" {
 		err = srv.ListenAndServeTLS(cfg.PublicPem, cfg.PrivatePem)

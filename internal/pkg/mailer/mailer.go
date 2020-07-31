@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"gopkg.in/gomail.v2"
 )
@@ -13,32 +12,26 @@ import (
 var DefaultConfig Config = Config{
 	SMTPServer:      "localhost",
 	SMTPPort:        25,
-	Sender:          "admin@ctrl-cmd.com",
-	AllowedDomains:  []string{"ctrl-cmd.com"},
 	Subject:         DefaultSubject,
 	MessageTemplate: DefaultTemplate,
 }
 
 const (
-	mailSMTPServerEnv     = "SPKS_MAIL_SMTP_SERVER"
-	mailSMTPPortEnv       = "SPKS_MAIL_SMTP_PORT"
-	mailSenderEnv         = "SPKS_MAIL_SENDER"
-	mailSMTPUsernameEnv   = "SPKS_MAIL_SMTP_USERNAME"
-	mailSMTPPasswordEnv   = "SPKS_MAIL_SMTP_PASSWORD"
-	mailSMTPInsecureEnv   = "SPKS_MAIL_SMTP_INSECURE_TLS"
-	mailAllowedDomainsEnv = "SPKS_MAIL_ALLOWED_DOMAINS"
+	mailSMTPServerEnv   = "SPKS_MAIL_SMTP_SERVER"
+	mailSMTPPortEnv     = "SPKS_MAIL_SMTP_PORT"
+	mailSMTPUsernameEnv = "SPKS_MAIL_SMTP_USERNAME"
+	mailSMTPPasswordEnv = "SPKS_MAIL_SMTP_PASSWORD"
+	mailSMTPInsecureEnv = "SPKS_MAIL_SMTP_INSECURE_TLS"
 )
 
 type Config struct {
-	SMTPServer      string   `yaml:"smtp-server"`
-	SMTPPort        int      `yaml:"smtp-port"`
-	SMTPInsecureTLS bool     `yaml:"smtp-insecure-tls"`
-	SMTPUsername    string   `yaml:"smtp-username"`
-	SMTPPassword    string   `yaml:"smtp-password"`
-	Sender          string   `yaml:"sender"`
-	Subject         string   `yaml:"subject"`
-	MessageTemplate string   `yaml:"message"`
-	AllowedDomains  []string `yaml:"allowed-domains"`
+	SMTPServer      string `yaml:"smtp-server"`
+	SMTPPort        int    `yaml:"smtp-port"`
+	SMTPInsecureTLS bool   `yaml:"smtp-insecure-tls"`
+	SMTPUsername    string `yaml:"smtp-username"`
+	SMTPPassword    string `yaml:"smtp-password"`
+	Subject         string `yaml:"subject"`
+	MessageTemplate string `yaml:"message"`
 }
 
 type TemplateArgs struct {
@@ -84,10 +77,6 @@ func CheckConfig(cfg *Config) error {
 		}
 		cfg.SMTPPort = int(b)
 	}
-	env = os.Getenv(mailSenderEnv)
-	if env != "" {
-		cfg.Sender = env
-	}
 	env = os.Getenv(mailSMTPUsernameEnv)
 	if env != "" {
 		cfg.SMTPUsername = env
@@ -104,19 +93,8 @@ func CheckConfig(cfg *Config) error {
 		}
 		cfg.SMTPInsecureTLS = b
 	}
-	env = os.Getenv(mailAllowedDomainsEnv)
-	if env != "" {
-		cfg.AllowedDomains = strings.Split(env, ",")
-		for i, d := range cfg.AllowedDomains {
-			cfg.AllowedDomains[i] = strings.TrimSpace(d)
-		}
-	}
-
 	if cfg.SMTPServer == "" {
 		return fmt.Errorf("smtp server address within mail configuration is missing or empty")
-	}
-	if cfg.Sender == "" {
-		return fmt.Errorf("sender address within mail configuration is missing or empty")
 	}
 	return nil
 }

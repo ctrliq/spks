@@ -53,7 +53,7 @@ func (m *MailVerifier) checkEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *htt
 		return hkpserver.NewBadRequestStatus("Key rejected, invalid email address")
 	}
 
-	for _, domain := range m.config.MailerConfig.AllowedDomains {
+	for _, domain := range m.config.MailIdentityDomains {
 		if strings.HasSuffix(email.Address, domain) {
 			el, err := m.db.Get(email.Address, false, true, database.PublicKey)
 			if err != nil {
@@ -67,7 +67,10 @@ func (m *MailVerifier) checkEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *htt
 		}
 	}
 
-	return hkpserver.NewBadRequestStatus("Key rejected, invalid email domain")
+	if len(m.config.MailIdentityDomains) > 0 {
+		return hkpserver.NewBadRequestStatus("Key rejected, invalid email domain")
+	}
+	return nil
 }
 
 // checkValidSubmission checks that the key was submitted with credentials given

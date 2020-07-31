@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/ctrl-cmd/spks/internal/pkg/defaultdb"
 	"github.com/ctrl-cmd/spks/internal/pkg/mailer"
@@ -18,11 +20,15 @@ const (
 )
 
 const (
-	bindAddrEnv   = "SPKS_BIND_ADDRESS"
-	publicURLEnv  = "SPKS_PUBLIC_URL"
-	signingKeyEnv = "SPKS_SIGNING_PGPKEY"
-	publicKeyEnv  = "SPKS_PUBLIC_KEY_CERT"
-	privateKeyEnv = "SPKS_PRIVATE_KEY_CERT"
+	bindAddrEnv                 = "SPKS_BIND_ADDRESS"
+	publicURLEnv                = "SPKS_PUBLIC_URL"
+	signingKeyEnv               = "SPKS_SIGNING_PGPKEY"
+	publicKeyEnv                = "SPKS_PUBLIC_KEY_CERT"
+	privateKeyEnv               = "SPKS_PRIVATE_KEY_CERT"
+	adminEmailEnv               = "SPKS_ADMIN_EMAIL"
+	mailIdentityDomainsEnv      = "SPKS_MAIL_IDENTITY_DOMAINS"
+	mailIdentityVerificationEnv = "SPKS_MAIL_IDENTITY_VERIFICATION"
+	keyPushRateLimitEnv         = "SPKS_KEY_PUSH_RATE_LIMIT"
 )
 
 type Certificate struct {
@@ -31,8 +37,9 @@ type Certificate struct {
 }
 
 type ServerConfig struct {
-	BindAddr  string `yaml:"bind-address"`
-	PublicURL string `yaml:"public-url"`
+	BindAddr   string `yaml:"bind-address"`
+	PublicURL  string `yaml:"public-url"`
+	AdminEmail string `yaml:"admin-email"`
 
 	SigningPGPKey string `yaml:"signing-pgpkey"`
 
@@ -40,15 +47,21 @@ type ServerConfig struct {
 
 	MailerConfig mailer.Config `yaml:"mail"`
 
+	MailIdentityDomains      []string `yaml:"mail-identity-domains"`
+	MailIdentityVerification bool     `yaml:"mail-identity-verification"`
+
+	KeyPushRateLimit hkpserver.RateLimit `yaml:"key-push-rate-limit"`
+
 	DBEngine string                 `yaml:"db"`
 	DBConfig map[string]interface{} `yaml:"db-config"`
 }
 
 var DefaultServerConfig ServerConfig = ServerConfig{
 	BindAddr:     hkpserver.DefaultAddr,
-	PublicURL:    "http://" + hkpserver.DefaultAddr,
+	PublicURL:    "hkp://localhost",
 	MailerConfig: mailer.DefaultConfig,
 	DBEngine:     defaultdb.Name,
+	AdminEmail:   "root@localhost",
 }
 
 func Parse(path string) (ServerConfig, error) {
@@ -107,7 +120,33 @@ func CheckServerConfig(cfg *ServerConfig) error {
 	if env != "" {
 		cfg.Certificate.PrivateKeyPath = env
 	}
+	env = os.Getenv(adminEmailEnv)
+	if env != "" {
+		cfg.AdminEmail = env
+	}
+	env = os.Getenv(mailIdentityVerificationEnv)
+	if env != "" {
+		b, err := strconv.ParseBool(env)
+		if err != nil {
+			return fmt.Errorf("while parsing %s: %s", mailIdentityVerificationEnv, err)
+		}
+		cfg.MailIdentityVerification = b
+	}
+	env = os.Getenv(mailIdentityDomainsEnv)
+	if env != "" {
+		cfg.MailIdentityDomains = strings.Split(env, ",")
+		for i, d := range cfg.MailIdentityDomains {
+			cfg.MailIdentityDomains[i] = strings.TrimSpace(d)
+		}
+	}
+	env = os.Getenv(keyPushRateLimitEnv)
+	if env != "" {
+		cfg.KeyPushRateLimit = hkpserver.RateLimit(env)
+	}
 
+	if cfg.AdminEmail == "" {
+		return fmt.Errorf("admin email address within is missing or empty within configuration")
+	}
 	if cfg.PublicURL == "" {
 		return fmt.Errorf("configuration public-url is missing or empty")
 	}

@@ -39,7 +39,11 @@ func New(config *config.ServerConfig, signingKey *openpgp.Entity) *MailVerifier 
 		v.checkDuplicateKey,    // fail if a key exist with the same fingerprint
 		v.checkValidSubmission, // validation process via basic auth token
 		v.checkEmail,           // check if mail address in key identity is whitelisted
-		v.sendEmail,            // send validation email
+	}
+	if config.MailIdentityVerification {
+		v.processing = append(v.processing, v.sendEmail)
+	} else {
+		v.processing = append(v.processing, v.noEmail)
 	}
 	return v
 }
@@ -114,7 +118,7 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 	}
 	u.User = url.User(token)
 
-	from := m.config.MailerConfig.Sender
+	from := m.config.AdminEmail
 	to := id.UserId.Email
 	args := &mailer.TemplateArgs{
 		Name:          id.UserId.Name,
@@ -151,4 +155,8 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 	}
 
 	return hkpserver.NewAcceptedStatus("Key accepted, validation instructions sent to", to)
+}
+
+func (m *MailVerifier) noEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http.Request) hkpserver.Status {
+	return hkpserver.NewOKStatus()
 }
