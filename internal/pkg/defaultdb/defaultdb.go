@@ -65,10 +65,10 @@ func (b *bunt) Connect() error {
 	var err error
 
 	createIndexes := map[string]struct{}{
-		keyPrefix + "name":     struct{}{},
-		keyPrefix + "email":    struct{}{},
-		sigKeyPrefix + "name":  struct{}{},
-		sigKeyPrefix + "email": struct{}{},
+		keyPrefix + "name":     {},
+		keyPrefix + "email":    {},
+		sigKeyPrefix + "name":  {},
+		sigKeyPrefix + "email": {},
 	}
 
 	if b.cfg.Dir == "" {
@@ -86,9 +86,7 @@ func (b *bunt) Connect() error {
 	}
 
 	for _, index := range indexes {
-		if _, ok := createIndexes[index]; ok {
-			delete(createIndexes, index)
-		}
+		delete(createIndexes, index)
 	}
 
 	for index := range createIndexes {
@@ -151,7 +149,7 @@ func (b *bunt) Del(el openpgp.EntityList) error {
 }
 
 func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.KeyType) (openpgp.EntityList, error) {
-	var err error
+	var dbErr error
 	var el openpgp.EntityList
 
 	kp := keyPrefix
@@ -181,7 +179,7 @@ func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.Ke
 			}
 		}
 
-		err = b.db.View(func(tx *buntdb.Tx) error {
+		dbErr = b.db.View(func(tx *buntdb.Tx) error {
 			if exact {
 				val, err := tx.Get(kp + fpKey)
 				if err != nil {
@@ -211,7 +209,7 @@ func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.Ke
 		})
 	} else {
 		// text search
-		err = b.db.View(func(tx *buntdb.Tx) error {
+		dbErr = b.db.View(func(tx *buntdb.Tx) error {
 			if exact {
 				// first search for email
 				err := tx.AscendEqual(kp+"email", search, func(key, val string) bool {
@@ -258,7 +256,7 @@ func (b *bunt) Get(search string, isFingerprint bool, exact bool, kt database.Ke
 		})
 	}
 
-	return el, err
+	return el, dbErr
 }
 
 func marshalEntityRecord(e *openpgp.Entity, private bool) (string, error) {

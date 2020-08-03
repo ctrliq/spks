@@ -20,21 +20,21 @@ const (
 // their own configuration requirements.
 type Config interface{}
 
-var databaseEngines = make(map[string]DatabaseEngine)
+var databaseEngines = make(map[string]Engine)
 
 // RegisterDatabaseEngine registers a database engine.
-func RegisterDatabaseEngine(name string, db DatabaseEngine) {
+func RegisterDatabaseEngine(name string, db Engine) {
 	databaseEngines[name] = db
 }
 
 // GetDatabaseEngine returns the database engine correspo
-func GetDatabaseEngine(name string) (DatabaseEngine, bool) {
+func GetDatabaseEngine(name string) (Engine, bool) {
 	db, ok := databaseEngines[name]
 	return db, ok
 }
 
-// DatabaseEngine defines interface that database engines must implement.
-type DatabaseEngine interface {
+// Engine defines interface that database engines must implement.
+type Engine interface {
 	// NewConfig returns a config instance for the corresponding DB engine.
 	NewConfig() Config
 	// CheckConfig ensure proper configuration parameters and also handle

@@ -23,7 +23,7 @@ import (
 // set by mage at build time
 var version string
 
-func addSigningKey(el openpgp.EntityList, db database.DatabaseEngine) error {
+func addSigningKey(el openpgp.EntityList, db database.Engine) error {
 	if len(el) != 1 {
 		return fmt.Errorf("found %d signing pgp key(s), only one can be set", len(el))
 	}
@@ -80,12 +80,11 @@ func execute(args []string) error {
 	eldb, err := db.Get("", true, false, database.SigningKey)
 	if err != nil {
 		return fmt.Errorf("while searching for signing key in database: %s", err)
-	} else {
-		for _, e := range eldb {
-			if len(eldb[0].Revocations) == 0 {
-				signingKey = e
-				break
-			}
+	}
+	for _, e := range eldb {
+		if len(eldb[0].Revocations) == 0 {
+			signingKey = e
+			break
 		}
 	}
 
@@ -126,16 +125,16 @@ func execute(args []string) error {
 	}
 
 	scfg := hkpserver.Config{
-		Addr:              cfg.BindAddr,
-		PublicPem:         cfg.Certificate.PublicKeyPath,
-		PrivatePem:        cfg.Certificate.PrivateKeyPath,
-		DB:                db,
-		CustomHandler:     hkpserver.LogRequestHandler,
-		Verifier:          mailverifier.New(&cfg, signingKey),
-		KeyPushRateLimit:  cfg.KeyPushRateLimit,
+		Addr:             cfg.BindAddr,
+		PublicPem:        cfg.Certificate.PublicKeyPath,
+		PrivatePem:       cfg.Certificate.PrivateKeyPath,
+		DB:               db,
+		CustomHandler:    hkpserver.LogRequestHandler,
+		Verifier:         mailverifier.New(&cfg, signingKey),
+		KeyPushRateLimit: cfg.KeyPushRateLimit,
 	}
 
-	logrus.WithField("listen", cfg.BindAddr).Info("Server started")
+	logrus.WithField("listen", cfg.BindAddr).Infof("Server started (version %s)", version)
 
 	return hkpserver.Start(ctx, scfg)
 }

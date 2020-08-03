@@ -9,7 +9,7 @@ import (
 
 type brokenVerifier struct{}
 
-func (brokenVerifier) Init(database.DatabaseEngine, *http.ServeMux) error {
+func (brokenVerifier) Init(database.Engine, *http.ServeMux) error {
 	return nil
 }
 
@@ -19,7 +19,7 @@ func (brokenVerifier) Verify(openpgp.EntityList, *http.Request) (openpgp.EntityL
 
 type conflictVerifier struct{}
 
-func (conflictVerifier) Init(database.DatabaseEngine, *http.ServeMux) error {
+func (conflictVerifier) Init(database.Engine, *http.ServeMux) error {
 	return nil
 }
 
@@ -29,7 +29,7 @@ func (conflictVerifier) Verify(openpgp.EntityList, *http.Request) (openpgp.Entit
 
 type okVerifier struct{}
 
-func (okVerifier) Init(database.DatabaseEngine, *http.ServeMux) error {
+func (okVerifier) Init(database.Engine, *http.ServeMux) error {
 	return nil
 }
 

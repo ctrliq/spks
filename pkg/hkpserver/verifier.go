@@ -10,6 +10,6 @@ import (
 // Verifier is the key verifier interface allowing
 // HKP to reject/accept keys based on custom criteria.
 type Verifier interface {
-	Init(database.DatabaseEngine, *http.ServeMux) error
+	Init(database.Engine, *http.ServeMux) error
 	Verify(openpgp.EntityList, *http.Request) (openpgp.EntityList, Status)
 }

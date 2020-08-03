@@ -51,7 +51,7 @@ type Config struct {
 	Addr             string
 	PublicPem        string
 	PrivatePem       string
-	DB               database.DatabaseEngine
+	DB               database.Engine
 	Verifier         Verifier
 	CustomHandler    func(http.Handler) http.Handler
 	MaxHeaderBytes   int
@@ -61,7 +61,7 @@ type Config struct {
 
 type hkpHandler struct {
 	maxBodyBytes    int64
-	db              database.DatabaseEngine
+	db              database.Engine
 	verifier        Verifier
 	usersLimit      map[string]*rate.Limiter
 	usersLimitMutex sync.Mutex
@@ -327,10 +327,8 @@ func Start(ctx context.Context, cfg Config) error {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			shutdownCh <- srv.Shutdown(context.Background())
-		}
+		<-ctx.Done()
+		shutdownCh <- srv.Shutdown(context.Background())
 	}()
 
 	if cfg.PublicPem != "" && cfg.PrivatePem != "" {

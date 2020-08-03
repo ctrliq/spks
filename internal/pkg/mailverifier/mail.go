@@ -22,7 +22,7 @@ var _ hkpserver.Verifier = &MailVerifier{}
 type MailVerifier struct {
 	config     *config.ServerConfig
 	processing []processingFunc
-	db         database.DatabaseEngine
+	db         database.Engine
 	signingKey *openpgp.Entity
 	passphrase [64]byte
 	sessionKey [64]byte
@@ -48,7 +48,7 @@ func New(config *config.ServerConfig, signingKey *openpgp.Entity) *MailVerifier 
 	return v
 }
 
-func (m *MailVerifier) Init(db database.DatabaseEngine, _ *http.ServeMux) error {
+func (m *MailVerifier) Init(db database.Engine, _ *http.ServeMux) error {
 	m.db = db
 	_, err := io.ReadFull(rand.Reader, m.sessionKey[:])
 	if err != nil {
