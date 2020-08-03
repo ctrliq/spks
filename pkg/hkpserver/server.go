@@ -59,16 +59,11 @@ type Config struct {
 	KeyPushRateLimit RateLimit
 }
 
-type userLimit struct {
-	limiter *rate.Limiter
-	last    time.Time
-}
-
 type hkpHandler struct {
 	maxBodyBytes    int64
 	db              database.DatabaseEngine
 	verifier        Verifier
-	usersLimit      map[string]*userLimit
+	usersLimit      map[string]*rate.Limiter
 	usersLimitMutex sync.Mutex
 	rateRequests    int
 	rateMinutes     int
@@ -83,18 +78,14 @@ func (h *hkpHandler) pushLimitReached(ip string) bool {
 	h.usersLimitMutex.Lock()
 	defer h.usersLimitMutex.Unlock()
 
-	u, ok := h.usersLimit[ip]
+	lim, ok := h.usersLimit[ip]
 	if !ok {
 		rt := rate.Every((time.Duration(h.rateMinutes) * time.Minute) / time.Duration(h.rateRequests))
-		h.usersLimit[ip] = &userLimit{
-			limiter: rate.NewLimiter(rt, 1),
-			last:    time.Now(),
-		}
-		return false
+		lim = rate.NewLimiter(rt, h.rateRequests)
+		h.usersLimit[ip] = lim
 	}
 
-	u.last = time.Now()
-	return !u.limiter.Allow()
+	return !lim.Allow()
 }
 
 // add provides the /pks/add HKP handler.
@@ -280,9 +271,8 @@ func Start(ctx context.Context, cfg Config) error {
 		return err
 	} else if handler.rateRequests > 0 && handler.rateMinutes > 0 {
 		// rate limit enabled
-		handler.usersLimit = make(map[string]*userLimit)
+		handler.usersLimit = make(map[string]*rate.Limiter)
 		ticker := time.NewTicker(1 * time.Minute)
-		lifetime := time.Duration(handler.rateMinutes) * time.Minute
 		go func() {
 			for {
 				select {
@@ -290,9 +280,13 @@ func Start(ctx context.Context, cfg Config) error {
 					return
 				case <-ticker.C:
 					handler.usersLimitMutex.Lock()
-					for ip, v := range handler.usersLimit {
-						if time.Since(v.last) > lifetime {
+					for ip, lim := range handler.usersLimit {
+						n := time.Now()
+						r := lim.ReserveN(n, lim.Burst())
+						if r.DelayFrom(n) == 0 {
 							delete(handler.usersLimit, ip)
+						} else {
+							r.CancelAt(n)
 						}
 					}
 					handler.usersLimitMutex.Unlock()
