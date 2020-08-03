@@ -51,6 +51,7 @@ jobs:
         run: go run ./mage.go test:integration
 
   build-docker-release-images:
+    needs: build-and-test
     # build docker images for tag push only
     strategy:
       matrix:
