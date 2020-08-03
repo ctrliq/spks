@@ -38,11 +38,11 @@ func (r RateLimit) Parse() (int, int, error) {
 	}
 	req, err := strconv.ParseInt(s[0], 10, 32)
 	if err != nil {
-		return -1, -1, fmt.Errorf("while parsing burst limit request: %s", err)
+		return -1, -1, fmt.Errorf("while parsing rate limit request: %s", err)
 	}
 	min, err := strconv.ParseInt(s[1], 10, 32)
 	if err != nil {
-		return -1, -1, fmt.Errorf("while parsing burst limit second: %s", err)
+		return -1, -1, fmt.Errorf("while parsing rate limit minute: %s", err)
 	}
 	return int(req), int(min), nil
 }
