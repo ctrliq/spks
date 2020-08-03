@@ -32,7 +32,7 @@ mail-identiy-domains: []
 mail-identity-verification: false
 
 # Key push rate limit restricts the number of key push requests that a user
-# can do per seconds. Must be of the form "requests/minutes". By default there
+# can do per minute. Must be of the form "requests/minutes". By default there
 # is no rate limit but it is really recommended to set a limit when mail identity
 # verification is enabled to reduce mail spam.
 # Example: "2/1" allows 2 key push requests per minute

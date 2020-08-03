@@ -38,6 +38,9 @@ func remoteIP(req *http.Request) string {
 
 	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return ip
+	}
 
 	if parsed.IsLoopback() {
 		realIP = req.Header.Get("X-Real-Ip")
@@ -50,17 +53,23 @@ func remoteIP(req *http.Request) string {
 				break
 			}
 		}
-		if !private {
+		// within private range, looks for reverse proxy headers
+		if private {
 			realIP = req.Header.Get("X-Real-Ip")
 			forwardedFor = req.Header.Get("X-Forwarded-For")
 		}
 	}
 
 	if realIP != "" {
-		return realIP
+		if net.ParseIP(realIP) != nil {
+			return realIP
+		}
 	} else if forwardedFor != "" {
 		parts := strings.Split(forwardedFor, ",")
-		return strings.TrimSpace(parts[0])
+		forwardedIP := strings.TrimSpace(parts[0])
+		if net.ParseIP(forwardedIP) != nil {
+			return forwardedIP
+		}
 	}
 
 	return ip
