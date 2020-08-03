@@ -83,20 +83,18 @@ func (h *hkpHandler) pushLimitReached(ip string) bool {
 	h.usersLimitMutex.Lock()
 	defer h.usersLimitMutex.Unlock()
 
-	if u, ok := h.usersLimit[ip]; ok {
-		u.last = time.Now()
-		if !u.limiter.Allow() {
-			return true
-		}
-	} else {
-		rt := rate.Every((time.Duration(h.rateRequests) * time.Minute) / time.Duration(h.rateRequests))
+	u, ok := h.usersLimit[ip]
+	if !ok {
+		rt := rate.Every((time.Duration(h.rateMinutes) * time.Minute) / time.Duration(h.rateRequests))
 		h.usersLimit[ip] = &userLimit{
 			limiter: rate.NewLimiter(rt, 1),
 			last:    time.Now(),
 		}
+		return false
 	}
 
-	return false
+	u.last = time.Now()
+	return !u.limiter.Allow()
 }
 
 // add provides the /pks/add HKP handler.
