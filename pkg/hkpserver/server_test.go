@@ -17,6 +17,7 @@ import (
 	"github.com/ctrl-cmd/spks/pkg/database"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/time/rate"
 )
 
 func TestStart(t *testing.T) {
@@ -353,5 +354,50 @@ func TestHandler(t *testing.T) {
 				t.Errorf("unexpected content returned for %q: got %s instead of %s", tt.name, resp.Body.String(), tt.content)
 			}
 		}
+	}
+}
+
+func TestRateLimit(t *testing.T) {
+	// http handler
+	handler := new(hkpHandler)
+	handler.maxBodyBytes = int64(1 << 18)
+	handler.usersLimit = make(map[string]*rate.Limiter)
+	handler.rateMinutes = 1
+	handler.rateRequests = 2
+
+	tests := []struct {
+		name         string
+		limitReached bool
+	}{
+		{
+			name:         "First request OK",
+			limitReached: false,
+		},
+		{
+			name:         "Second request OK",
+			limitReached: false,
+		},
+		{
+			name:         "Third request KO",
+			limitReached: true,
+		},
+	}
+
+	first := true
+restart:
+
+	for _, tt := range tests {
+		lr := handler.pushLimitReached("127.0.0.1")
+		if lr != tt.limitReached {
+			t.Errorf("unexpected result from pushLimitReached: got %v instead of %v", lr, tt.limitReached)
+		}
+	}
+
+	if first {
+		// re-run tests after 1 minute to check if the rate limit
+		// has been reset correctly
+		time.Sleep(1 * time.Minute)
+		first = false
+		goto restart
 	}
 }
