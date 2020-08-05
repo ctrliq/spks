@@ -1,6 +1,7 @@
 package mailverifier
 
 import (
+	"fmt"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -43,9 +44,18 @@ func (m *MailVerifier) checkSingleIdentity(e *openpgp.Entity, dbe *openpgp.Entit
 // no other keys in the database with the same email address.
 func (m *MailVerifier) checkEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http.Request) hkpserver.Status {
 	var id *openpgp.Identity
+	isPrimary := false
+
 	for key := range e.Identities {
 		id = e.Identities[key]
+		if id.SelfSignature != nil && id.SelfSignature.IsPrimaryId != nil {
+			isPrimary = *id.SelfSignature.IsPrimaryId
+		}
 		break
+	}
+
+	if !isPrimary {
+		return hkpserver.NewBadRequestStatus(fmt.Sprintf("%q is not the primary identity", id.Name))
 	}
 
 	email, err := mail.ParseAddress(id.UserId.Email)
