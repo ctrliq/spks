@@ -383,21 +383,17 @@ func TestRateLimit(t *testing.T) {
 		},
 	}
 
-	first := true
-restart:
-
 	for _, tt := range tests {
 		lr := handler.pushLimitReached("127.0.0.1")
 		if lr != tt.limitReached {
 			t.Errorf("unexpected result from pushLimitReached: got %v instead of %v", lr, tt.limitReached)
+		} else if tt.limitReached {
+			n := time.Now()
+			r := handler.usersLimit["127.0.0.1"].ReserveN(n, handler.rateRequests)
+			delay := r.DelayFrom(n)
+			if delay < 59*time.Second {
+				t.Errorf("unexpected time duration < 59 second: %d", delay)
+			}
 		}
-	}
-
-	if first {
-		// re-run tests after 1 minute to check if the rate limit
-		// has been reset correctly
-		time.Sleep(1 * time.Minute)
-		first = false
-		goto restart
 	}
 }
