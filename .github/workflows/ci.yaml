@@ -51,18 +51,12 @@ jobs:
         run: go run ./mage.go test:integration
 
   build-docker-release-images:
+    # if: ${{ startsWith(github.ref, 'refs/tags/') }}
     needs: build-and-test
     # build docker images for tag push only
     strategy:
       matrix:
         platform: [ubuntu-latest]
-        cfg:
-          - { arch: amd64,   goarch: amd64 }
-          - { arch: i386,    goarch: 386 }
-          - { arch: ppc64le, goarch: ppc64le }
-          - { arch: arm64v8, goarch: arm64 }
-          - { arch: arm32v7, goarch: arm }
-          - { arch: s390x,   goarch: s390x }
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout code
@@ -75,14 +69,18 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           path: ./build/gobuild
 
-      - name: Build Docker image [${{ matrix.cfg.arch }}]
-        uses: docker/build-push-action@v1
-        with:
-          dockerfile: ./build/docker/Dockerfile
-          registry: docker.pkg.github.com
-          repository: ctrl-cmd/spks/spks
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          build_args: ALPINE_ARCH=${{ matrix.cfg.arch }},BUILD_GOARCH=${{ matrix.cfg.goarch }}
-          tag_with_ref: ${{ startsWith(github.ref, 'refs/tags/') }}
-          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Build Docker image
+        env:
+          DOCKERFILE: ./build/docker/Dockerfile
+          DOCKER_CLI_EXPERIMENTAL: enabled
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY: registry.gitlab.com
+          REPOSITORY: cclerget/spks/spks
+        run: |
+          echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USERNAME --password-stdin $REGISTRY
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/386,linux/arm,linux/arm64,linux/ppc64le,linux/s390x \
+          -t $REGISTRY/$REPOSITORY:$(basename ${{github.ref}}) \
+          -f $DOCKERFILE \
+          --push .
