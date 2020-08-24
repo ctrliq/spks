@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -89,23 +90,25 @@ func execute(args []string) error {
 	}
 
 	if cfg.SigningPGPKey != "" && signingKey == nil {
-		if _, err := os.Stat(cfg.SigningPGPKey); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("while getting signing pgp key: %s", err)
-		} else if err == nil {
-			logrus.WithField("path", cfg.SigningPGPKey).Info("Using signing PGP key")
-			b, err := ioutil.ReadFile(cfg.SigningPGPKey)
+		// look first if the signing key is provided as a base64 encoded string
+		b, err := base64.StdEncoding.DecodeString(cfg.SigningPGPKey)
+		if err != nil {
+			b, err = ioutil.ReadFile(cfg.SigningPGPKey)
 			if err != nil {
 				return fmt.Errorf("while reading signing pgp key: %s", err)
 			}
-			el, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(b))
-			if err != nil {
-				return fmt.Errorf("while decoding signing pgp key: %s", err)
-			}
-			if err := addSigningKey(el, db); err != nil {
-				return err
-			}
-			signingKey = el[0]
 		}
+		el, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(b))
+		if err != nil {
+			return fmt.Errorf("while decoding signing pgp key: %s", err)
+		} else if len(el) == 0 {
+			return fmt.Errorf("no signing key found")
+		}
+		logrus.WithField("identity", el[0].PrimaryIdentity().Name).Info("Using signing PGP key")
+		if err := addSigningKey(el, db); err != nil {
+			return err
+		}
+		signingKey = el[0]
 	}
 
 	if signingKey == nil {

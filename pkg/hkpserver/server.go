@@ -2,7 +2,11 @@ package hkpserver
 
 import (
 	"context"
+	"crypto/tls"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -332,7 +336,7 @@ func Start(ctx context.Context, cfg Config) error {
 	}()
 
 	if cfg.PublicPem != "" && cfg.PrivatePem != "" {
-		err = srv.ListenAndServeTLS(cfg.PublicPem, cfg.PrivatePem)
+		err = serveTLS(srv, cfg.PublicPem, cfg.PrivatePem)
 	} else {
 		err = srv.ListenAndServe()
 	}
@@ -342,4 +346,38 @@ func Start(ctx context.Context, cfg Config) error {
 	}
 
 	return <-shutdownCh
+}
+
+func serveTLS(srv *http.Server, publicPem, privatePem string) error {
+	pubCert, err := base64.StdEncoding.DecodeString(publicPem)
+	if err != nil {
+		pubCert, err = ioutil.ReadFile(publicPem)
+		if err != nil {
+			return fmt.Errorf("while reading public certificate: %s", err)
+		}
+	}
+	privCert, err := base64.StdEncoding.DecodeString(privatePem)
+	if err != nil {
+		privCert, err = ioutil.ReadFile(privatePem)
+		if err != nil {
+			return fmt.Errorf("while reading private certificate: %s", err)
+		}
+	}
+	c, err := tls.X509KeyPair(pubCert, privCert)
+	if err != nil {
+		return fmt.Errorf("while loading TLS certificates: %s", err)
+	}
+	config := &tls.Config{
+		NextProtos:   []string{"http/1.1"},
+		Certificates: []tls.Certificate{c},
+	}
+
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		return fmt.Errorf("while listening on %s: %s", srv.Addr, err)
+	}
+	defer ln.Close()
+
+	tlsListener := tls.NewListener(ln, config)
+	return srv.Serve(tlsListener)
 }

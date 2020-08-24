@@ -6,14 +6,15 @@ public-url: "hkp://localhost"
 
 # HTTP TLS configuration
 certificate:
-    # Path to the server public key for HTTPS support
+    # Path to (or base64 encoded) public key for HTTPS support
     public-key: ""
-    # Path to private key for HTTPS support
+    # Path to (or base64 encoded) private key for HTTPS support
     private-key: ""
 
-# Path to the signing PGP key used by the server to sign public key identities,
-# the file must contain both public and private key (without password) in
-# armored ASCII format
+# Signing PGP key used by the server to sign public key identities, this can
+# be a path or a base64 encoded string containing the PGP key in armored ASCII
+# format. The PGP key must contain both public and private key (without password)
+# in armored ASCII format
 signing-pgpkey: ""
 
 # Administrator email address, also used as sender address when sending
