@@ -25,6 +25,7 @@ const (
 )
 
 const (
+	BaseRoute   = "/"
 	AddRoute    = "/pks/add"
 	LookupRoute = "/pks/lookup"
 )
@@ -248,6 +249,10 @@ func (h *hkpHandler) lookup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *hkpHandler) base(w http.ResponseWriter, r *http.Request) {
+	NewOKStatus("").Write(w)
+}
+
 // Start starts HKP server with the corresponding server configuration.
 func Start(ctx context.Context, cfg Config) error {
 	var err error
@@ -299,6 +304,7 @@ func Start(ctx context.Context, cfg Config) error {
 		}()
 	}
 
+	mux.HandleFunc(BaseRoute, handler.base)
 	mux.HandleFunc(AddRoute, handler.add)
 	mux.HandleFunc(LookupRoute, handler.lookup)
 
