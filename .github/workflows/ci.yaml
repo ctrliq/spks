@@ -75,8 +75,8 @@ jobs:
           DOCKER_CLI_EXPERIMENTAL: enabled
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
-          REGISTRY: registry.gitlab.com
-          REPOSITORY: cclerget/spks/spks
+          REGISTRY: harbor.ctrliq.dev
+          REPOSITORY: private/spks
         run: |
           echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USERNAME --password-stdin $REGISTRY
           docker buildx create --use
