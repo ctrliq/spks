@@ -73,10 +73,10 @@ jobs:
         env:
           DOCKERFILE: ./build/docker/Dockerfile
           DOCKER_CLI_EXPERIMENTAL: enabled
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_USERNAME: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
-          REGISTRY: harbor.ctrliq.dev
-          REPOSITORY: private/spks
+          REGISTRY: ghcr.io
+          REPOSITORY: ctrl-cmd/spks
         run: |
           echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USERNAME --password-stdin $REGISTRY
           docker buildx create --use
