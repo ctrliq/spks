@@ -51,7 +51,7 @@ jobs:
         run: go run ./mage.go test:integration
 
   build-docker-release-images:
-    # if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     needs: build-and-test
     # build docker images for tag push only
     strategy:
