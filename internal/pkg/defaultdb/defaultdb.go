@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrliq/spks/pkg/database"
 	"github.com/tidwall/buntdb"
 	"github.com/tidwall/gjson"
 	"golang.org/x/crypto/openpgp"

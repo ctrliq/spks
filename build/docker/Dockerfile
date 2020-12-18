@@ -3,7 +3,7 @@ ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 COPY . /spks
 WORKDIR /spks/build
-RUN go mod edit -replace=github.com/ctrl-cmd/gobuild=./gobuild
+RUN go mod edit -replace=github.com/ctrliq/gobuild=./gobuild
 RUN TARGETPLATFORM=$TARGETPLATFORM go run mage.go build
 
 FROM busybox:1.32.0-musl

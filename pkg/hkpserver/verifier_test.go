@@ -3,7 +3,7 @@ package hkpserver
 import (
 	"net/http"
 
-	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrliq/spks/pkg/database"
 	"golang.org/x/crypto/openpgp"
 )
 

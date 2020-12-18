@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ctrl-cmd/spks/internal/pkg/defaultdb"
-	"github.com/ctrl-cmd/spks/internal/pkg/mailer"
-	"github.com/ctrl-cmd/spks/pkg/database"
-	"github.com/ctrl-cmd/spks/pkg/hkpserver"
+	"github.com/ctrliq/spks/internal/pkg/defaultdb"
+	"github.com/ctrliq/spks/internal/pkg/mailer"
+	"github.com/ctrliq/spks/pkg/database"
+	"github.com/ctrliq/spks/pkg/hkpserver"
 	"gopkg.in/yaml.v3"
 )
 

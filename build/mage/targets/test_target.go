@@ -1,7 +1,7 @@
 package targets
 
 import (
-	"github.com/ctrl-cmd/gobuild"
+	"github.com/ctrliq/gobuild"
 	"github.com/magefile/mage/mg"
 )
 

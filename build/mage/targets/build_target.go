@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ctrl-cmd/gobuild"
+	"github.com/ctrliq/gobuild"
 )
 
 func ArchFromDockerPlatform(platform string) string {

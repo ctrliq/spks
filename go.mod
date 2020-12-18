@@ -1,4 +1,4 @@
-module github.com/ctrl-cmd/spks
+module github.com/ctrliq/spks
 
 go 1.14
 
