@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ctrl-cmd/gobuild"
+	"github.com/ctrliq/gobuild"
 )
 
 const packageName = "spks"

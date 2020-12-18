@@ -1,4 +1,4 @@
-![CI](https://github.com/ctrl-cmd/spks/workflows/ci/badge.svg)
+![CI](https://github.com/ctrliq/spks/workflows/ci/badge.svg)
 
 # Singularity Public Key Server #
 
@@ -17,7 +17,7 @@ Singularity PKS allows to store and retrieve user public PGP keys. Unlike tradit
 ## Installation ##
 
 ```
-git clone https://github.com/ctrl-cmd/spks && cd spks/build
+git clone https://github.com/ctrliq/spks && cd spks/build
 go run mage.go build
 ./spks
 ```
@@ -26,11 +26,11 @@ go run mage.go build
 
 By default server is searching for a configuration file in `/usr/local/etc/spks/server.yaml`, if not found the server will start with a default configuration which should be pretty limited for your environment.
 
-To see available configuration directives, you can refer to the [configuration](https://github.com/ctrl-cmd/spks/wiki/Configuration) documentation section.
+To see available configuration directives, you can refer to the [configuration](https://github.com/ctrliq/spks/wiki/Configuration) documentation section.
 
 ## Documentation ##
 
-You could find the documentation at https://github.com/ctrl-cmd/spks/wiki/Singularity-Public-Key-Server.
+You could find the documentation at https://github.com/ctrliq/spks/wiki/Singularity-Public-Key-Server.
 
 ## Create and install from package ##
 

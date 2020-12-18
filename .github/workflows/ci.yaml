@@ -26,19 +26,19 @@ jobs:
       - name: Checkout gobuild
         uses: actions/checkout@v2
         with:
-          repository: ctrl-cmd/gobuild
+          repository: ctrliq/gobuild
           token: ${{ secrets.ACCESS_TOKEN }}
           path: ./build/gobuild
 
       - name: Replace gobuild
         working-directory: ./build
-        run: go mod edit -replace=github.com/ctrl-cmd/gobuild=./gobuild
+        run: go mod edit -replace=github.com/ctrliq/gobuild=./gobuild
 
       - name: Install golangci-lint
         run: |
           wget -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh
           sh install.sh
-      
+
       - name: Run linter
         run: ./bin/golangci-lint run ./...
 
@@ -65,7 +65,7 @@ jobs:
       - name: Checkout gobuild
         uses: actions/checkout@v2
         with:
-          repository: ctrl-cmd/gobuild
+          repository: ctrliq/gobuild
           token: ${{ secrets.ACCESS_TOKEN }}
           path: ./build/gobuild
 
@@ -76,7 +76,7 @@ jobs:
           REGISTRY_USERNAME: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
           REGISTRY: ghcr.io
-          REPOSITORY: ctrl-cmd/spks
+          REPOSITORY: ctrliq/spks
         run: |
           echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USERNAME --password-stdin $REGISTRY
           docker buildx create --use

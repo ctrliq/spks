@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	// mage:import
-	_ "github.com/ctrl-cmd/spks/build/mage/targets"
+	_ "github.com/ctrliq/spks/build/mage/targets"
 )
 
 func init() {

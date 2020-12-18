@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ctrl-cmd/spks/internal/pkg/defaultdb"
-	"github.com/ctrl-cmd/spks/pkg/database"
+	"github.com/ctrliq/spks/internal/pkg/defaultdb"
+	"github.com/ctrliq/spks/pkg/database"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/time/rate"

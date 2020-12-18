@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ctrl-cmd/spks/pkg/database"
-	"github.com/ctrl-cmd/spks/pkg/keyring"
+	"github.com/ctrliq/spks/pkg/database"
+	"github.com/ctrliq/spks/pkg/keyring"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/time/rate"
 )

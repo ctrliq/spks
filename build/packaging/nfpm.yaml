@@ -1,10 +1,10 @@
 name: "spks"
 release: 1
 
-maintainer: "Control Command, Inc."
-vendor: "Control Command, Inc."
-homepage: "https://ctrl-cmd.com"
-license: "Copyright (c) 2020, Control Command, Inc. All rights reserved."
+maintainer: "Ctrl IQ, Inc."
+vendor: "Ctrl IQ, Inc."
+homepage: "https://ctrliq.com"
+license: "Copyright (c) 2020, Ctrl IQ, Inc. All rights reserved."
 
 description: |
   Singularity Public Key Server.
