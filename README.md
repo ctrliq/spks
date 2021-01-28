@@ -44,6 +44,6 @@ You could find the documentation at https://github.com/ctrliq/spks/wiki/Singular
 * RPM package:
 
   ```
-  go run mage.go package:deb
+  go run mage.go package:rpm
   sudo rpm -ivh release/$(git describe|sed 's/^v//')/*.rpm
   ```
