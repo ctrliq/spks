@@ -146,7 +146,7 @@ func (m *MailVerifier) sendEmail(e *openpgp.Entity, dbe *openpgp.Entity, r *http
 		return hkpserver.NewInternalServerErrorStatus("Mail message processing failed")
 	}
 
-	logrus.WithField("to", to).Info("Sending public key")
+	logrus.WithField("to", to).Info("Sending mail verification")
 
 	msg := mailer.NewMessage(from, to, subject, s.String())
 
