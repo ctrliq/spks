@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: ctrliq/gobuild
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ secrets.ACTIONS_TOKEN }}
           path: ./build/gobuild
 
       - name: Replace gobuild
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: ctrliq/gobuild
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ secrets.ACTIONS_TOKEN }}
           path: ./build/gobuild
 
       - name: Build Docker image
