@@ -1,0 +1,17 @@
+[Unit]
+Description=Simple Public Key Server
+After=local-fs.target network-online.target
+Requires=local-fs.target network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/spks /usr/local/etc/spks/server.yaml
+Type=simple
+User=spks
+Group=spks
+NoNewPrivileges=true
+CapabilityBoundingSet=
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,68 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+        go: ['1.14.x']
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install golangci-lint
+        run: |
+          wget -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh
+          sh install.sh
+
+      - name: Run linter
+        run: ./bin/golangci-lint run ./...
+
+      - name: Build
+        working-directory: ./build
+        run: go run ./mage.go build
+
+      - name: Tests
+        working-directory: ./build
+        run: go run ./mage.go test:integration
+
+  build-docker-release-images:
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: build-and-test
+    # build docker images for tag push only
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        env:
+          DOCKERFILE: ./build/docker/Dockerfile
+          DOCKER_CLI_EXPERIMENTAL: enabled
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY: ghcr.io
+          REPOSITORY: ctrliq/spks
+        run: |
+          echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USERNAME --password-stdin $REGISTRY
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/386,linux/arm,linux/arm64,linux/ppc64le,linux/s390x \
+          -t $REGISTRY/$REPOSITORY:$(basename ${{github.ref}}) \
+          -f $DOCKERFILE \
+          --push .

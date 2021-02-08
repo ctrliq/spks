@@ -1,0 +1,57 @@
+# Bind address/port where server listen on
+bind-address: "localhost:11371"
+
+# Public URL as exposed to external clients (also used in mail template)
+public-url: "hkp://localhost"
+
+# HTTP TLS configuration
+certificate:
+    # Path to (or base64 encoded) public key for HTTPS support
+    public-key: ""
+    # Path to (or base64 encoded) private key for HTTPS support
+    private-key: ""
+
+# Signing PGP key used by the server to sign public key identities, this can
+# be a path or a base64 encoded string containing the PGP key in armored ASCII
+# format. The PGP key must contain both public and private key (without password)
+# in armored ASCII format
+signing-pgpkey: ""
+
+# Administrator email address, also used as sender address when sending
+# verification emails
+admin-email: "root@localhost"
+
+# Mail domains allowed for the mail address field in PGP key identities,
+# all by default. When used in conjunction with mail-identity-verification
+# the server will restrict and validate the PGP key identities for those domains
+mail-identiy-domains: []
+
+# Mail identity verification enable/disable the mail address verification.
+# When enabled, the server send an email to the mail address set in PGP key
+# identity inviting user to validate his key. If set to true, you must also
+# provide the SMTP mail configuration below in order to send email
+mail-identity-verification: false
+
+# Key push rate limit restricts the number of key push requests that a user
+# can do per minute. Must be of the form "requests/minutes". By default there
+# is no rate limit but it is really recommended to set a limit when mail identity
+# verification is enabled to reduce mail spam.
+# Example: "2/1" allows 2 key push requests per minute
+key-push-rate-limit: ""
+
+# SMTP mail client configuration
+mail:
+    # Hostname/ip of the SMTP server
+    smtp-server: "localhost"
+    # Port of the SMTP server
+    smtp-port: 25
+    # Username account to use to send mail from this server
+    smtp-username: ""
+    # Password credentials to use to send mail
+    smtp-password: ""
+
+# Database used by the server to store public keys
+db: "default"
+db-config:
+    # database storage directory, used in-memory database if empty
+    dir: "/var/lib/spks"

@@ -1,0 +1,24 @@
+name: "spks"
+release: 1
+
+maintainer: "Ctrl IQ, Inc."
+vendor: "Ctrl IQ, Inc."
+homepage: "https://ctrliq.com"
+license: "Copyright (c) 2020, Ctrl IQ, Inc. All rights reserved."
+
+description: |
+  Simple Public Key Server.
+bindir: "/usr/local/bin"
+
+files:
+  ./build/spks: "/usr/local/bin/spks"
+
+config_files:
+  ./etc/server-example.yaml: /usr/local/etc/spks/server.yaml
+  ./build/packaging/systemd/spks.service: "/lib/systemd/system/spks.service"
+
+empty_folders:
+- /var/lib/spks
+
+scripts:
+  postinstall: ./build/packaging/scripts/postinstall.sh

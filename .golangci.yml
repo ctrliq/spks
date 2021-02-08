@@ -1,0 +1,31 @@
+run:
+  timeout: 1m
+
+linters:
+  disable-all: true
+  enable-all: false
+  enable:
+    - deadcode
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - govet
+    - ineffassign
+    - maligned
+    - misspell
+    - nakedret
+    - dupl
+    - staticcheck
+
+linters-settings:
+  gofmt:
+    simplify: true
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
+
+issues:
+  max-per-linter: 0
+  max-same-issues: 0
