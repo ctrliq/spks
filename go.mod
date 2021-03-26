@@ -8,7 +8,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/tidwall/buntdb v1.1.8
-	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/gjson v1.7.3
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
