@@ -7,8 +7,8 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.6.1 // indirect
-	github.com/tidwall/buntdb v1.2.6
-	github.com/tidwall/gjson v1.9.4
+	github.com/tidwall/buntdb v1.2.7
+	github.com/tidwall/gjson v1.10.2
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
