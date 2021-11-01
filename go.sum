@@ -23,8 +23,8 @@ github.com/tidwall/btree v0.6.0/go.mod h1:TzIRzen6yHbibdSfK6t8QimqbUnoxUSrZfeW7U
 github.com/tidwall/buntdb v1.2.6 h1:eS0QSmzHfCKjxxYGh8eH6wnK5VLsJ7UjyyIr29JmnEg=
 github.com/tidwall/buntdb v1.2.6/go.mod h1:zpXqlA5D2772I4cTqV3ifr2AZihDgi8FV7xAQu6edfc=
 github.com/tidwall/gjson v1.8.0/go.mod h1:5/xDoumyyDNerp2U36lyolv46b3uF/9Bu6OfyQ9GImk=
-github.com/tidwall/gjson v1.9.4 h1:oNis7dk9Rs3dKJNNigXZT1MTOiJeBtpurn+IpCB75MY=
-github.com/tidwall/gjson v1.9.4/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
+github.com/tidwall/gjson v1.11.0 h1:C16pk7tQNiH6VlCrtIXL1w8GaOsi1X3W8KDkE1BuYd4=
+github.com/tidwall/gjson v1.11.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/grect v0.1.2 h1:wKVeQVZhjaFCKTTlpkDe3Ex4ko3cMGW3MRKawRe8uQ4=
 github.com/tidwall/grect v0.1.2/go.mod h1:v+n4ewstPGduVJebcp5Eh2WXBJBumNzyhK8GZt4gHNw=
 github.com/tidwall/lotsa v1.0.2 h1:dNVBH5MErdaQ/xd9s769R31/n2dXavsQ0Yf4TMEHHw8=
