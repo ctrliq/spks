@@ -7,7 +7,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/sirupsen/logrus v1.9.0
 	github.com/tidwall/buntdb v1.2.9
-	github.com/tidwall/gjson v1.14.1
+	github.com/tidwall/gjson v1.14.2
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
