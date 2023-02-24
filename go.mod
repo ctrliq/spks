@@ -9,7 +9,7 @@ require (
 	github.com/tidwall/buntdb v1.2.9
 	github.com/tidwall/gjson v1.14.1
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
+	golang.org/x/time v0.3.0
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
