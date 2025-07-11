@@ -1,5 +1,7 @@
 ![CI](https://github.com/ctrliq/spks/workflows/ci/badge.svg)
 
+# ⚠️ This repository is no longer maintained and has been archived. It remains available for reference.
+
 # Simple Public Key Server #
 
 Simple PKS allows to store and retrieve user public PGP keys. Unlike traditional public key servers each submitted key goes through a validation process via mail addresses and force users to have a valid identity associated to their public PGP keys.
